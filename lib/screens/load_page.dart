@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/session_service.dart';
+import 'home_page.dart';
 
 class LoadPage extends StatefulWidget {
   const LoadPage({super.key});
@@ -12,10 +14,24 @@ class _LoadPageState extends State<LoadPage> {
   @override
   void initState() {
     super.initState();
-    // setelah 3 detik pindah ke Login Page
-    Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/login');
-    });
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    await Future.delayed(const Duration(seconds: 2));
+
+    final username = await SessionService.getValidSession();
+
+    if (mounted) {
+      if (username != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage(username: username)),
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
   }
 
   @override
@@ -31,9 +47,7 @@ class _LoadPageState extends State<LoadPage> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Center(
-          child: Image.asset("assets/app.png", width: 150),
-        ),
+        child: Center(child: Image.asset("assets/app.png", width: 150)),
       ),
     );
   }
