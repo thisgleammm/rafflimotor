@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
+import 'dashboard_page.dart'; // 🔹 tambahkan import ini
 
 class HomePage extends StatelessWidget {
   final String username;
@@ -31,7 +32,11 @@ class HomePage extends StatelessWidget {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.red, Colors.deepPurple, Colors.blue],
+            colors: [
+              Color.fromRGBO(218, 24, 24, 1),
+              Color.fromRGBO(138, 20, 65, 1),
+              Color.fromRGBO(0, 14, 137, 1)
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -67,6 +72,35 @@ class HomePage extends StatelessWidget {
                   'You have successfully logged in to Raffli Motor',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16, color: Colors.black45),
+                ),
+                const SizedBox(height: 30),
+
+                // 🔹 Tombol ke DashboardPage
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            DashboardPage(username: username),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.dashboard, color: Colors.white),
+                  label: const Text(
+                    "Masuk ke Dashboard",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
                 ),
               ],
             ),

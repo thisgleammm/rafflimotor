@@ -10,16 +10,30 @@ class LoadPage extends StatefulWidget {
   State<LoadPage> createState() => _LoadPageState();
 }
 
-class _LoadPageState extends State<LoadPage> {
+class _LoadPageState extends State<LoadPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Animasi zoom-in logo
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    _scaleAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
+    _controller.forward();
+
+    // Tetap jalankan pengecekan session seperti semula
     _checkSession();
   }
 
   Future<void> _checkSession() async {
     await Future.delayed(const Duration(seconds: 2));
-
     final username = await SessionService.getValidSession();
 
     if (mounted) {
@@ -35,6 +49,12 @@ class _LoadPageState extends State<LoadPage> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
@@ -42,12 +62,21 @@ class _LoadPageState extends State<LoadPage> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.red, Colors.deepPurple, Colors.blue],
+            colors: [
+              Color.fromRGBO(218, 24, 24, 1),
+              Color.fromRGBO(138, 20, 65, 1),
+              Color.fromRGBO(0, 14, 137, 1)
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Center(child: Image.asset("assets/app.png", width: 150)),
+        child: Center(
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Image.asset("assets/app.png", width: 150),
+          ),
+        ),
       ),
     );
   }
