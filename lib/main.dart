@@ -3,6 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/load_page.dart';
 import 'screens/login_page.dart';
+import 'screens/dashboard_page.dart';
+import 'screens/inventory_page.dart';
 import 'supabase_config.dart';
 
 void main() async {
@@ -28,8 +30,13 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Raffli Motor',
       theme: ThemeData(useMaterial3: true),
-      home: const LoadPage(), // <- buka splash screen dulu
-      routes: {'/login': (context) => const LoginPage()},
+      home: const LoadPage(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/dashboard': (context) => const DashboardPage(username: ''), // 🔹 route dashboard
+        '/inventory': (context) => const InventoryPage(),              // 🔹 route inventory
+      },
     );
   }
 }
+

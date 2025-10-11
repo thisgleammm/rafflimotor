@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
 import '../widgets/bottom_navbar.dart';
+import 'inventory_page.dart'; // ✅ import halaman inventory
 
 class DashboardPage extends StatefulWidget {
   final String username;
@@ -15,11 +16,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _onItemTapped(int index) async {
     if (index == 3) {
-      // Handle logout
+      // 🔴 Tombol logout
       await SessionService.clearSession();
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }
+    } else if (index == 2) {
+      // 📦 Tombol inventory
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryPage()),
+      );
     } else {
       setState(() {
         _selectedIndex = index;
@@ -110,7 +117,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-          // 🔹 Isi halaman (sementara kosong)
+          // 🔹 Isi halaman
           Expanded(
             child: Center(
               child: Text(
@@ -121,10 +128,9 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
-      // History page (bisa ganti sesuai kebutuhan)
-      Center(child: Text("History Page")),
-      // Logout tidak perlu halaman
-      Container(),
+      // History page (bisa diganti sesuai kebutuhan)
+      const Center(child: Text("History Page")),
+      Container(), // Placeholder untuk inventory, sudah di-handle navigator
     ];
 
     return BottomNavbar(
@@ -148,12 +154,12 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         CustomBottomNavItem(
           icon: Icons.inventory_2_rounded,
-          isSelected: _selectedIndex == 2,
+          isSelected: false, // Tidak perlu ubah state karena pindah halaman
           onTap: () => _onItemTapped(2),
         ),
         CustomBottomNavItem(
           icon: Icons.logout_rounded,
-          isSelected: _selectedIndex == 3,
+          isSelected: false,
           onTap: () => _onItemTapped(3),
         ),
       ],
