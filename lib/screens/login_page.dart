@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import '../services/session_service.dart';
 import '../services/secure_supabase_client.dart';
 import '../utils/error_handler.dart';
 import '../widgets/custom_snackbar.dart';
+import 'dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,6 +25,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _signIn() async {
+    // Jika sudah loading, jangan proses lagi
+    if (_isLoading) return;
+
     // Validasi input
     if (_usernameController.text.trim().isEmpty) {
       CustomSnackBar.showWarning(context, 'Username tidak boleh kosong');
@@ -36,44 +39,42 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
+      // Set loading di awal proses login
+      setState(() {
+        _isLoading = true;
+      });
+
       final response = await SecureSupabaseClient.loginUser(
         username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
 
-      if (response != null && mounted) {
+      if (!mounted) return;
+
+      if (response != null) {
         String username = response['username'] ?? 'User';
 
-        await SessionService.saveSession(username);
+        // Simpan session secara asynchronous
+        SessionService.saveSession(username).then((_) {
+          if (!mounted) return;
 
-        if (mounted) {
-          // Tampilkan success message sebentar
+          // Navigasi ke dashboard langsung
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DashboardPage(username: username),
+            ),
+          );
+
+          // Tampilkan snackbar setelah navigasi
           CustomSnackBar.showSuccess(
             context,
             'Login berhasil! Selamat datang, $username',
           );
-
-          // Delay sebentar untuk user melihat success message
-          await Future.delayed(const Duration(milliseconds: 500));
-
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomePage(username: username),
-              ),
-            );
-          }
-        }
+        });
       } else {
-        if (mounted) {
-          CustomSnackBar.showError(context, 'Username atau password salah');
-        }
+        CustomSnackBar.showError(context, 'Username atau password salah');
       }
     } catch (error) {
       if (mounted) {
@@ -108,7 +109,11 @@ class _LoginPageState extends State<LoginPage> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color.fromRGBO(218, 24, 24, 1),Color.fromRGBO(138, 20, 65, 1), Color.fromRGBO(0, 14, 137, 1)],
+            colors: [
+              Color.fromRGBO(218, 24, 24, 1),
+              Color.fromRGBO(138, 20, 65, 1),
+              Color.fromRGBO(0, 14, 137, 1),
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

@@ -1,67 +1,85 @@
 import 'package:flutter/material.dart';
 
-class BottomNavbar extends StatefulWidget {
-  final int currentIndex;
-  final Function(int) onTap;
+class CustomBottomNavItem {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isSelected;
+
+  CustomBottomNavItem({
+    required this.icon,
+    required this.onTap,
+    required this.isSelected,
+  });
+}
+
+class BottomNavbar extends StatelessWidget {
+  final Widget? floatingActionButton;
+  final List<CustomBottomNavItem> items;
+  final Color backgroundColor;
+  final double height;
+  final double iconSize;
+  final Widget child;
 
   const BottomNavbar({
     super.key,
-    required this.currentIndex,
-    required this.onTap,
+    this.floatingActionButton,
+    required this.items,
+    required this.child,
+    this.backgroundColor = const Color(0xFFDA1818),
+    this.height = 70,
+    this.iconSize = 32,
   });
 
   @override
-  State<BottomNavbar> createState() => _BottomNavbarState();
-}
-
-class _BottomNavbarState extends State<BottomNavbar> {
-  @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      color: const Color(0xFFDA1818),
-      child: SizedBox(
-        height: 70,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              iconSize: 32,
-              icon: Icon(
-                Icons.home_rounded,
-                color: widget.currentIndex == 0 ? Colors.white : Colors.white70,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: child,
+      floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        elevation: 0,
+        color: backgroundColor,
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: SizedBox(
+          height: height,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Kiri FAB
+              Row(
+                children: [
+                  _buildNavItem(items[0]),
+                  const SizedBox(width: 40),
+                  _buildNavItem(items[1]),
+                ],
               ),
-              onPressed: () => widget.onTap(0),
-            ),
-            IconButton(
-              iconSize: 32,
-              icon: Icon(
-                Icons.history_rounded,
-                color: widget.currentIndex == 1 ? Colors.white : Colors.white70,
+              // Space for FAB (lebih kecil)
+              const SizedBox(width: 40),
+              // Kanan FAB
+              Row(
+                children: [
+                  _buildNavItem(items[2]),
+                  const SizedBox(width: 40),
+                  _buildNavItem(items[3]),
+                ],
               ),
-              onPressed: () => widget.onTap(1),
-            ),
-            const SizedBox(width: 40), // jarak tengah untuk FAB
-            IconButton(
-              iconSize: 32,
-              icon: Icon(
-                Icons.inventory_2_rounded,
-                color: widget.currentIndex == 2 ? Colors.white : Colors.white70,
-              ),
-              onPressed: () => widget.onTap(2),
-            ),
-            IconButton(
-              iconSize: 32,
-              icon: Icon(
-                Icons.person_outline_rounded,
-                color: widget.currentIndex == 3 ? Colors.white : Colors.white70,
-              ),
-              onPressed: () => widget.onTap(3),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNavItem(CustomBottomNavItem item) {
+    return IconButton(
+      iconSize: iconSize,
+      icon: Icon(
+        item.icon,
+        color: item.isSelected ? Colors.white : Colors.white70,
+      ),
+      onPressed: item.onTap,
     );
   }
 }

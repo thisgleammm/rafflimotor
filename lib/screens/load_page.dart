@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
-import 'home_page.dart';
+import 'dashboard_page.dart';
 
 class LoadPage extends StatefulWidget {
   const LoadPage({super.key});
@@ -24,8 +24,10 @@ class _LoadPageState extends State<LoadPage>
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-    _scaleAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    );
     _controller.forward();
 
     // Tetap jalankan pengecekan session seperti semula
@@ -40,7 +42,9 @@ class _LoadPageState extends State<LoadPage>
       if (username != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage(username: username)),
+          MaterialPageRoute(
+            builder: (context) => DashboardPage(username: username),
+          ),
         );
       } else {
         Navigator.pushReplacementNamed(context, '/login');
@@ -65,7 +69,7 @@ class _LoadPageState extends State<LoadPage>
             colors: [
               Color.fromRGBO(218, 24, 24, 1),
               Color.fromRGBO(138, 20, 65, 1),
-              Color.fromRGBO(0, 14, 137, 1)
+              Color.fromRGBO(0, 14, 137, 1),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
