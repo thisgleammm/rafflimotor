@@ -3,7 +3,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/load_page.dart';
 import 'screens/login_page.dart';
-import 'screens/home_page.dart';
 import 'supabase_config.dart';
 
 void main() async {
@@ -30,10 +29,7 @@ class MyApp extends StatelessWidget {
       title: 'Raffli Motor',
       theme: ThemeData(useMaterial3: true),
       home: const LoadPage(), // <- buka splash screen dulu
-      routes: {
-        '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(username: ''),
-      },
+      routes: {'/login': (context) => const LoginPage()},
     );
   }
 }

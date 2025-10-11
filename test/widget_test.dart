@@ -11,16 +11,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() {
   group('Raffli Motor App Tests', () {
-    testWidgets('App should initialize without errors', (WidgetTester tester) async {
+    testWidgets('App should initialize without errors', (
+      WidgetTester tester,
+    ) async {
       // Create a simple test app instead of the full app to avoid Supabase initialization
       const testApp = MaterialApp(
         title: 'Raffli Motor',
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Center(
-            child: Text('Test App'),
-          ),
-        ),
+        home: Scaffold(body: Center(child: Text('Test App'))),
       );
 
       // Build the test app
@@ -31,7 +29,9 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
     });
 
-    testWidgets('MaterialApp should have correct configuration', (WidgetTester tester) async {
+    testWidgets('MaterialApp should have correct configuration', (
+      WidgetTester tester,
+    ) async {
       // Create a simple MaterialApp with the same config as the real app
       final testApp = MaterialApp(
         title: 'Raffli Motor',
@@ -45,25 +45,33 @@ void main() {
 
       // Get the MaterialApp widget
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      
+
       // Verify app properties
       expect(materialApp.title, equals('Raffli Motor'));
       expect(materialApp.debugShowCheckedModeBanner, equals(false));
       expect(materialApp.theme?.useMaterial3, equals(true));
-      
+
       // Verify the test content is displayed
       expect(find.text('Config Test'), findsOneWidget);
     });
 
     test('Environment variables should be testable', () {
       // Test that we can load environment variables
-      dotenv.testLoad(fileInput: '''
+      dotenv.testLoad(
+        fileInput: '''
 SUPABASE_URL=https://test-project.supabase.co
 SUPABASE_ANON_KEY=test_key_for_unit_testing
-''');
+''',
+      );
 
-      expect(dotenv.env['SUPABASE_URL'], equals('https://test-project.supabase.co'));
-      expect(dotenv.env['SUPABASE_ANON_KEY'], equals('test_key_for_unit_testing'));
+      expect(
+        dotenv.env['SUPABASE_URL'],
+        equals('https://test-project.supabase.co'),
+      );
+      expect(
+        dotenv.env['SUPABASE_ANON_KEY'],
+        equals('test_key_for_unit_testing'),
+      );
     });
   });
 }
