@@ -37,10 +37,10 @@ class MyApp extends StatelessWidget {
       home: const LoadPage(),
       routes: {
         '/login': (context) => const LoginPage(),
-        '/dashboard': (context) => const DashboardPage(username: ''), // 🔹 route dashboard
-        '/inventory': (context) => const InventoryPage(),              // 🔹 route inventory
+        '/dashboard': (context) =>
+            const DashboardPage(username: ''), // 🔹 route dashboard
+        '/inventory': (context) => const InventoryPage(), // 🔹 route inventory
       },
     );
   }
 }
-

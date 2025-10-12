@@ -26,13 +26,20 @@ class _DashboardPageState extends State<DashboardPage> {
       // 📦 Tombol inventory
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const InventoryPage(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const InventoryPage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.ease;
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-            return SlideTransition(position: animation.drive(tween), child: child);
+            var tween = Tween(
+              begin: begin,
+              end: end,
+            ).chain(CurveTween(curve: curve));
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: child,
+            );
           },
         ),
       );
@@ -101,11 +108,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ],
                     ),
-                    const Icon(
-                      LucideIcons.bell,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    const Icon(LucideIcons.bell, color: Colors.white, size: 28),
                   ],
                 ),
                 const SizedBox(height: 25),
