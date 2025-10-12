@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../services/session_service.dart';
 import '../widgets/bottom_navbar.dart';
 import 'inventory_page.dart'; // ✅ import halaman inventory
@@ -23,9 +24,17 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     } else if (index == 2) {
       // 📦 Tombol inventory
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const InventoryPage()),
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const InventoryPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.ease;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            return SlideTransition(position: animation.drive(tween), child: child);
+          },
+        ),
       );
     } else {
       setState(() {
@@ -93,7 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ],
                     ),
                     const Icon(
-                      Icons.notifications_none,
+                      LucideIcons.bell,
                       color: Colors.white,
                       size: 28,
                     ),
@@ -139,26 +148,26 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Colors.white,
         onPressed: () {},
         shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Color(0xFFDA1818), size: 40),
+        child: const Icon(LucideIcons.plus, color: Color(0xFFDA1818), size: 40),
       ),
       items: [
         CustomBottomNavItem(
-          icon: Icons.home_rounded,
+          icon: LucideIcons.home,
           isSelected: _selectedIndex == 0,
           onTap: () => _onItemTapped(0),
         ),
         CustomBottomNavItem(
-          icon: Icons.history_rounded,
+          icon: LucideIcons.history,
           isSelected: _selectedIndex == 1,
           onTap: () => _onItemTapped(1),
         ),
         CustomBottomNavItem(
-          icon: Icons.inventory_2_rounded,
+          icon: LucideIcons.box,
           isSelected: false, // Tidak perlu ubah state karena pindah halaman
           onTap: () => _onItemTapped(2),
         ),
         CustomBottomNavItem(
-          icon: Icons.logout_rounded,
+          icon: LucideIcons.logOut,
           isSelected: false,
           onTap: () => _onItemTapped(3),
         ),
