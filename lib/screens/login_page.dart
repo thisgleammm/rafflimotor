@@ -107,17 +107,13 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color.fromRGBO(218, 24, 24, 1),
-              Color.fromRGBO(138, 20, 65, 1),
-              Color.fromRGBO(0, 14, 137, 1),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: BoxDecoration(
+  image: DecorationImage(
+    image: AssetImage("assets/colorwpp.png"),
+    fit: BoxFit.cover, // agar gambar menutupi seluruh layar
+  ),
+),
+
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
