@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'dashboard_page.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -39,10 +41,9 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   Widget build(BuildContext context) {
     final filteredItems = items.where((item) {
-      final matchesSearch = item['name']
-          .toString()
-          .toLowerCase()
-          .contains(_searchController.text.toLowerCase());
+      final matchesSearch = item['name'].toString().toLowerCase().contains(
+        _searchController.text.toLowerCase(),
+      );
       final matchesCategory =
           selectedCategory == 'All' || item['category'] == selectedCategory;
       return matchesSearch && matchesCategory;
@@ -54,7 +55,7 @@ class _InventoryPageState extends State<InventoryPage> {
         preferredSize: const Size.fromHeight(80),
         child: Container(
           decoration: BoxDecoration(
-            color: Color (0xFFDA1818),
+            color: Color(0xFFDA1818),
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
@@ -73,10 +74,33 @@ class _InventoryPageState extends State<InventoryPage> {
                 children: [
                   IconButton(
                     onPressed: () {
-                      // TODO: Tambahkan logika back di sini
+                      Navigator.of(context).pushReplacement(
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  DashboardPage(username: ''),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                                const begin = Offset(-1.0, 0.0);
+                                const end = Offset.zero;
+                                const curve = Curves.ease;
+                                var tween = Tween(
+                                  begin: begin,
+                                  end: end,
+                                ).chain(CurveTween(curve: curve));
+                                return SlideTransition(
+                                  position: animation.drive(tween),
+                                  child: child,
+                                );
+                              },
+                        ),
+                      );
                     },
-                    icon: const Icon(Icons.arrow_back,
-                        color: Colors.white, size: 24),
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -105,7 +129,7 @@ class _InventoryPageState extends State<InventoryPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Cari barang',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(LucideIcons.search),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -141,7 +165,7 @@ class _InventoryPageState extends State<InventoryPage> {
                         ),
                         decoration: BoxDecoration(
                           color: selectedCategory == category
-                              ? Color (0xFFDA1818)
+                              ? Color(0xFFDA1818)
                               : Colors.grey[300],
                           borderRadius: BorderRadius.circular(25),
                         ),
@@ -174,8 +198,9 @@ class _InventoryPageState extends State<InventoryPage> {
                 ),
                 itemBuilder: (context, index) {
                   final item = filteredItems[index];
-                  final formattedDate =
-                      DateFormat('dd / MM / yyyy').format(item['date']);
+                  final formattedDate = DateFormat(
+                    'dd / MM / yyyy',
+                  ).format(item['date']);
 
                   return Container(
                     decoration: BoxDecoration(
@@ -195,7 +220,8 @@ class _InventoryPageState extends State<InventoryPage> {
                         // 🖼️ Gambar barang
                         ClipRRect(
                           borderRadius: const BorderRadius.all(
-                              Radius.circular(20)),
+                            Radius.circular(20),
+                          ),
                           child: Container(
                             margin: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -223,7 +249,9 @@ class _InventoryPageState extends State<InventoryPage> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -256,8 +284,11 @@ class _InventoryPageState extends State<InventoryPage> {
                                         onPressed: () {
                                           // TODO: Tambahkan logika edit di sini
                                         },
-                                        icon: const Icon(Icons.edit,
-                                            color: Color (0xFFDA1818), size: 18),
+                                        icon: const Icon(
+                                          LucideIcons.pencil,
+                                          color: Color(0xFFDA1818),
+                                          size: 18,
+                                        ),
                                         iconSize: 20,
                                         padding: const EdgeInsets.all(6),
                                         constraints: const BoxConstraints(
@@ -265,7 +296,7 @@ class _InventoryPageState extends State<InventoryPage> {
                                           minHeight: 0,
                                         ),
                                       ),
-                                    )
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
@@ -277,15 +308,18 @@ class _InventoryPageState extends State<InventoryPage> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: item['stock'] <= 3
-                                            ? Color (0xFFDA1818)
+                                            ? Color(0xFFDA1818)
                                             : Colors.black,
                                       ),
                                     ),
                                     if (item['stock'] <= 3)
                                       const Padding(
                                         padding: EdgeInsets.only(left: 4),
-                                        child: Icon(Icons.error_outline,
-                                            color: Color (0xFFDA1818), size: 16),
+                                        child: Icon(
+                                          LucideIcons.alertCircle,
+                                          color: Color(0xFFDA1818),
+                                          size: 16,
+                                        ),
                                       ),
                                   ],
                                 ),
