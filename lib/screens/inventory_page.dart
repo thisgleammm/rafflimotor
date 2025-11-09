@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:raffli_motor/widgets/product_card.dart';
@@ -52,7 +51,7 @@ class _InventoryPageState extends State<InventoryPage> {
           .getPublicUrl('placeholder.webp');
       return url;
     } catch (e) {
-      print('Error getting placeholder image URL: $e');
+      debugPrint('Error getting placeholder image URL: $e');
       // Return a default placeholder or handle the error appropriately
       return 'https://via.placeholder.com/150';
     }
@@ -61,9 +60,11 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   Widget build(BuildContext context) {
     final filteredItems = items.where((item) {
-      final matchesSearch = _searchController.text.isEmpty || item['name'].toString().toLowerCase().contains(
-        _searchController.text.toLowerCase(),
-      );
+      final matchesSearch =
+          _searchController.text.isEmpty ||
+          item['name'].toString().toLowerCase().contains(
+            _searchController.text.toLowerCase(),
+          );
       final matchesCategory =
           selectedCategory == 'All' || item['category'] == selectedCategory;
       return matchesSearch && matchesCategory;
@@ -216,12 +217,13 @@ class _InventoryPageState extends State<InventoryPage> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: 6, // Placeholder count
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.63,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.63,
+                          ),
                       itemBuilder: (context, index) => Shimmer.fromColors(
                         baseColor: Colors.grey[300]!,
                         highlightColor: Colors.grey[100]!,
@@ -242,12 +244,13 @@ class _InventoryPageState extends State<InventoryPage> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: filteredItems.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.63,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.63,
+                        ),
                     itemBuilder: (context, index) {
                       final item = filteredItems[index];
                       return ProductCard(
