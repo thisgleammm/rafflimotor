@@ -16,6 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -108,11 +109,11 @@ class _LoginPageState extends State<LoginPage> {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-  image: DecorationImage(
-    image: AssetImage("assets/colorwpp.png"),
-    fit: BoxFit.cover, // agar gambar menutupi seluruh layar
-  ),
-),
+          image: DecorationImage(
+            image: AssetImage("assets/colorwpp.png"),
+            fit: BoxFit.cover, // agar gambar menutupi seluruh layar
+          ),
+        ),
 
         child: SafeArea(
           child: SingleChildScrollView(
@@ -223,22 +224,37 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           child: TextField(
                             controller: _passwordController,
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                             enabled: !_isLoading,
                             style: const TextStyle(
                               fontSize: 16,
                               color: Color(0xFF2D3748),
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: "Password",
-                              hintStyle: TextStyle(
+                              hintStyle: const TextStyle(
                                 color: Color(0xFFA0AEC0),
                                 fontSize: 16,
                               ),
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 18,
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: const Color(0xFFA0AEC0),
+                                ),
+                                onPressed: _isLoading
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
                               ),
                             ),
                           ),
@@ -276,6 +292,42 @@ class _LoginPageState extends State<LoginPage> {
                                       letterSpacing: 0.5,
                                     ),
                                   ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // Register Link
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "Don't have an account? ",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF718096),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _isLoading
+                                    ? null
+                                    : () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/register',
+                                        );
+                                      },
+                                child: Text(
+                                  "Register",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: _isLoading
+                                        ? Colors.grey
+                                        : const Color(0xFFE53E3E),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
