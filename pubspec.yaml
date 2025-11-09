@@ -38,6 +38,8 @@ dependencies:
   crypto: ^3.0.3
   lucide_icons: ^0.257.0
   google_fonts: ^6.3.2
+  image_picker: ^1.1.2
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -66,7 +68,6 @@ flutter:
     - assets/colorwpp.png
     - assets/app.png
     - assets/profile.jpg
-    - assets/products/
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -94,3 +95,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
