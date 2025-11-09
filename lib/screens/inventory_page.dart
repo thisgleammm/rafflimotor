@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:raffli_motor/widgets/product_card.dart';
 import 'dashboard_page.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -13,37 +15,56 @@ class InventoryPage extends StatefulWidget {
 class _InventoryPageState extends State<InventoryPage> {
   final TextEditingController _searchController = TextEditingController();
   String selectedCategory = 'All';
+  late final Future<String> _placeholderImageUrl;
 
   final List<Map<String, dynamic>> items = [
     {
       'name': 'Oli SPX 2',
       'stock': 15,
       'date': DateTime(2025, 9, 15),
-      'image': 'assets/products/placeholder.jpg',
       'category': 'Matic',
     },
     {
       'name': 'Oli MPX 2',
       'stock': 3,
       'date': DateTime(2025, 9, 15),
-      'image': 'assets/products/placeholder.jpg',
       'category': 'Manual',
     },
     {
       'name': 'Minyak rem honda',
       'stock': 9,
       'date': DateTime(2025, 9, 15),
-      'image': 'assets/products/placeholder.jpg',
       'category': 'Matic',
     },
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _placeholderImageUrl = _getPlaceholderImageUrl();
+  }
+
+  Future<String> _getPlaceholderImageUrl() async {
+    try {
+      final url = Supabase.instance.client.storage
+          .from('productimage_bucket')
+          .getPublicUrl('placeholder.webp');
+      return url;
+    } catch (e) {
+      debugPrint('Error getting placeholder image URL: $e');
+      // Return a default placeholder or handle the error appropriately
+      return 'https://via.placeholder.com/150';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final filteredItems = items.where((item) {
-      final matchesSearch = item['name'].toString().toLowerCase().contains(
-        _searchController.text.toLowerCase(),
-      );
+      final matchesSearch =
+          _searchController.text.isEmpty ||
+          item['name'].toString().toLowerCase().contains(
+            _searchController.text.toLowerCase(),
+          );
       final matchesCategory =
           selectedCategory == 'All' || item['category'] == selectedCategory;
       return matchesSearch && matchesCategory;
@@ -119,230 +140,134 @@ class _InventoryPageState extends State<InventoryPage> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔍 Search bar
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Cari barang',
-                prefixIcon: const Icon(LucideIcons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.grey, width: 1),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🔍 Search bar
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Cari barang',
+                  prefixIcon: const Icon(LucideIcons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: const BorderSide(color: Colors.grey, width: 1),
+                  ),
                 ),
+                onChanged: (_) => setState(() {}),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            const Text(
-              'Jelajahi Stok Barang',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
+              const Text(
+                'Jelajahi Stok Barang',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
 
-            // 🏷️ Filter kategori
-            Row(
-              children: [
-                for (final category in ['All', 'Matic', 'Manual'])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => selectedCategory = category);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selectedCategory == category
-                              ? Color(0xFFDA1818)
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
+              // 🏷️ Filter kategori
+              Row(
+                children: [
+                  for (final category in ['All', 'Matic', 'Manual'])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => selectedCategory = category);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
                             color: selectedCategory == category
-                                ? Colors.white
-                                : Colors.black,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                                ? Color(0xFFDA1818)
+                                : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              color: selectedCategory == category
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-            // 📦 Daftar barang
-            Expanded(
-              child: GridView.builder(
-                itemCount: filteredItems.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.63,
-                ),
-                itemBuilder: (context, index) {
-                  final item = filteredItems[index];
-                  final formattedDate = DateFormat(
-                    'dd / MM / yyyy',
-                  ).format(item['date']);
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 🖼️ Gambar barang
-                        ClipRRect(
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(20),
+              // 📦 Daftar barang
+              FutureBuilder<String>(
+                future: _placeholderImageUrl,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 6, // Placeholder count
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.63,
                           ),
-                          child: Container(
-                            margin: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Image.asset(
-                                item['image'],
-                                height: 140,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                      itemBuilder: (context, index) => Shimmer.fromColors(
+                        baseColor: Colors.grey[300]!,
+                        highlightColor: Colors.grey[100]!,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                        // 🔹 Deskripsi
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        item['name'],
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black12,
-                                            blurRadius: 3,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {
-                                          // TODO: Tambahkan logika edit di sini
-                                        },
-                                        icon: const Icon(
-                                          LucideIcons.pencil,
-                                          color: Color(0xFFDA1818),
-                                          size: 18,
-                                        ),
-                                        iconSize: 20,
-                                        padding: const EdgeInsets.all(6),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 0,
-                                          minHeight: 0,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    Text(
-                                      'Stok ${item['stock']}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: item['stock'] <= 3
-                                            ? Color(0xFFDA1818)
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                    if (item['stock'] <= 3)
-                                      const Padding(
-                                        padding: EdgeInsets.only(left: 4),
-                                        child: Icon(
-                                          LucideIcons.alertCircle,
-                                          color: Color(0xFFDA1818),
-                                          size: 16,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Terakhir input $formattedDate',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                                const Spacer(),
-                              ],
-                            ),
-                          ),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError || !snapshot.hasData) {
+                    return const Center(child: Text('Error memuat gambar'));
+                  }
+                  final imageUrl = snapshot.data!;
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredItems.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.63,
                         ),
-                      ],
-                    ),
+                    itemBuilder: (context, index) {
+                      final item = filteredItems[index];
+                      return ProductCard(
+                        imageUrl: imageUrl,
+                        name: item['name'],
+                        stock: item['stock'],
+                        date: item['date'],
+                        onEdit: () {
+                          // TODO: Tambahkan logika edit di sini
+                        },
+                      );
+                    },
                   );
                 },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
