@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.raffli_motor"
+    namespace = "com.rafflimotor.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,10 +20,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.raffli_motor"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Unique Application ID for Raffli Motor
+        applicationId = "com.rafflimotor.app"
+        // Application configuration for Raffli Motor inventory management system.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
