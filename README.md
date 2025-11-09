@@ -1,10 +1,10 @@
 # Raffli Motor
 
-A new Flutter project.
+Aplikasi manajemen dan inventori untuk Raffli Motor - sistem penjualan dan stok motor.
 
-## Getting Started
+## Tentang Aplikasi
 
-This project is a starting point for a Flutter application.
+Raffli Motor adalah aplikasi Flutter untuk mengelola inventori dan penjualan motor yang dibangun dengan integrasi Supabase.
 
 A few resources to get you started if this is your first Flutter project:
 

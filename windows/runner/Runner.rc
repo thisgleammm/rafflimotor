@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "raffli_motor" "\0"
+            VALUE "CompanyName", "Raffli Motor" "\0"
+            VALUE "FileDescription", "Raffli Motor - Aplikasi Manajemen Motor" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "raffli_motor" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 Raffli Motor. All rights reserved." "\0"
             VALUE "OriginalFilename", "raffli_motor.exe" "\0"
-            VALUE "ProductName", "raffli_motor" "\0"
+            VALUE "ProductName", "Raffli Motor" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
