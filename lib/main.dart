@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/load_page.dart';
 import 'screens/login_page.dart';
 import 'screens/dashboard_page.dart';
-import 'screens/inventory_page.dart';
+import 'screens/stock_page.dart';
 import 'supabase_config.dart';
 
 void main() async {
@@ -29,17 +29,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Raffli Motor',
+      title: '', // Set title to empty string
       theme: ThemeData(
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
-      home: const LoadPage(),
+      home: Scaffold ( body: const LoadPage(), ),
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) =>
             const DashboardPage(username: ''), // 🔹 route dashboard
-        '/inventory': (context) => const InventoryPage(), // 🔹 route inventory
+        '/inventory': (context) => const StockPage(), // 🔹 route inventory
       },
     );
   }

@@ -2,26 +2,68 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
+import 'dart:convert'; // Import for base64Decode
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends StatefulWidget {
   final String imageUrl;
   final String name;
   final int stock;
-  final DateTime date;
+  final DateTime? date;
   final VoidCallback onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onLoad;
+  final bool isLoading;
 
   const ProductCard({
     super.key,
     required this.imageUrl,
     required this.name,
     required this.stock,
-    required this.date,
+    this.date,
     required this.onEdit,
-  });
+    this.onDelete,
+    this.onLoad,
+  }) : isLoading = false;
+
+  const ProductCard.loading({super.key})
+      : imageUrl = '',
+        name = '',
+        stock = 0,
+        date = null,
+        onEdit = _emptyOnEdit,
+        onDelete = null,
+        onLoad = null,
+        isLoading = true;
+
+  static void _emptyOnEdit() {}
 
   @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
+  @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('dd / MM / yyyy').format(date);
+    if (widget.isLoading) {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      );
+    }
+
+    final formattedDate = widget.date != null
+        ? DateFormat('dd / MM / yyyy').format(widget.date!)
+        : 'N/A';
+
+    // Base64 encoded 1x1 transparent GIF
+    const String transparentGif =
+        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     return Container(
       decoration: BoxDecoration(
@@ -47,34 +89,16 @@ class ProductCard extends StatelessWidget {
               margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: Image.network(
-                  imageUrl,
+                child: FadeInImage.memoryNetwork(
+                  placeholder: base64Decode(transparentGif),
+                  image: widget.imageUrl,
                   height: 140,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: Container(
-                        height: 140,
-                        width: double.infinity,
-                        color: Colors.white,
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
+                  fit: BoxFit.contain,
+                  imageErrorBuilder: (context, error, stackTrace) {
                     return const Icon(Icons.error);
                   },
                 ),
@@ -94,7 +118,7 @@ class ProductCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        name,
+                        widget.name,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -116,9 +140,61 @@ class ProductCard extends StatelessWidget {
                         ],
                       ),
                       child: IconButton(
-                        onPressed: onEdit,
+                        onPressed: widget.onEdit,
                         icon: const Icon(
                           LucideIcons.pencil,
+                          color: Color(0xFFDA1818),
+                          size: 18,
+                        ),
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(
+                          minWidth: 0,
+                          minHeight: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Hapus Produk'),
+                              content: const Text(
+                                  'Apakah Anda yakin ingin menghapus produk ini?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  child: const Text('Batal'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  child: const Text('Hapus'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            widget.onDelete!();
+                          }
+                        },
+                        icon: const Icon(
+                          LucideIcons.trash,
                           color: Color(0xFFDA1818),
                           size: 18,
                         ),
@@ -136,16 +212,16 @@ class ProductCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      'Stok $stock',
+                      'Stok ${widget.stock}',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: stock <= 3
+                        color: widget.stock <= 3
                             ? Color(0xFFDA1818)
                             : Colors.black,
                       ),
                     ),
-                    if (stock <= 3)
+                    if (widget.stock <= 3)
                       const Padding(
                         padding: EdgeInsets.only(left: 4),
                         child: Icon(

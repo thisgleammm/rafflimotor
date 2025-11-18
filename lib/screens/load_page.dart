@@ -65,14 +65,9 @@ class _LoadPageState extends State<LoadPage>
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color.fromRGBO(218, 24, 24, 1),
-              Color.fromRGBO(138, 20, 65, 1),
-              Color.fromRGBO(0, 14, 137, 1),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+          image: DecorationImage(
+            image: AssetImage("assets/colorwpp.png"),
+            fit: BoxFit.cover,
           ),
         ),
         child: Center(
