@@ -295,41 +295,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // Register Link
-                        Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Don't have an account? ",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF718096),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: _isLoading
-                                    ? null
-                                    : () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/register',
-                                        );
-                                      },
-                                child: Text(
-                                  "Register",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: _isLoading
-                                        ? Colors.grey
-                                        : const Color(0xFFE53E3E),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),

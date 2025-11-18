@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/session_service.dart';
 import '../widgets/bottom_navbar.dart';
-import 'inventory_page.dart'; // ✅ import halaman inventory
+import 'stock_page.dart'; // ✅ import halaman inventory
 
 class DashboardPage extends StatefulWidget {
   final String username;
@@ -27,7 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
       Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const InventoryPage(),
+              const StockPage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
