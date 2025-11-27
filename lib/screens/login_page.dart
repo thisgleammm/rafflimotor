@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/session_service.dart';
-import '../services/secure_supabase_client.dart';
+import '../services/auth_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/custom_snackbar.dart';
 import 'dashboard_page.dart';
@@ -46,7 +45,8 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = true;
       });
 
-      final response = await SecureSupabaseClient.loginUser(
+      final authService = AuthService();
+      final response = await authService.login(
         username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
@@ -56,24 +56,22 @@ class _LoginPageState extends State<LoginPage> {
       if (response != null) {
         String username = response['username'] ?? 'User';
 
-        // Simpan session secara asynchronous
-        SessionService.saveSession(username).then((_) {
-          if (!mounted) return;
+        // Session sudah otomatis disimpan oleh AuthService
+        // Navigasi ke dashboard langsung
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardPage(username: username),
+          ),
+        );
 
-          // Navigasi ke dashboard langsung
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashboardPage(username: username),
-            ),
-          );
-
-          // Tampilkan snackbar setelah navigasi
+        // Tampilkan snackbar setelah navigasi
+        if (mounted) {
           CustomSnackBar.showSuccess(
             context,
             'Login berhasil! Selamat datang, $username',
           );
-        });
+        }
       } else {
         CustomSnackBar.showError(context, 'Username atau password salah');
       }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../services/session_service.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
+import '../models/product_with_stock.dart';
 import '../widgets/bottom_navbar.dart';
+import '../widgets/low_stock_alert.dart';
 import 'stock_page.dart'; // ✅ import halaman inventory
 
 class DashboardPage extends StatefulWidget {
@@ -14,17 +17,44 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
+  final DatabaseService _databaseService = DatabaseService();
+  List<ProductWithStock> _lowStockProducts = [];
+  bool _isLoadingStock = true;
+  static const int _minStockThreshold = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLowStock();
+  }
+
+  Future<void> _checkLowStock() async {
+    setState(() {
+      _isLoadingStock = true;
+    });
+
+    final products = await _databaseService.getProductsWithStock();
+    final lowStock = products
+        .where((product) => product.stock <= _minStockThreshold)
+        .toList();
+
+    setState(() {
+      _lowStockProducts = lowStock;
+      _isLoadingStock = false;
+    });
+  }
 
   void _onItemTapped(int index) async {
     if (index == 3) {
-      // 🔴 Tombol logout
-      await SessionService.clearSession();
+      // 🔴 Tombol logout - invalidate session di server juga
+      final authService = AuthService();
+      await authService.logout();
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }
     } else if (index == 2) {
       // 📦 Tombol inventory
-      Navigator.of(context).push(
+      final result = await Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
               const StockPage(),
@@ -43,6 +73,10 @@ class _DashboardPageState extends State<DashboardPage> {
           },
         ),
       );
+      // Refresh low stock alert ketika kembali dari stock page
+      if (result == true || result == null) {
+        _checkLowStock();
+      }
     } else {
       setState(() {
         _selectedIndex = index;
@@ -108,7 +142,37 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ],
                     ),
-                    const Icon(LucideIcons.bell, color: Colors.white, size: 28),
+                    // Notification badge with count
+                    Stack(
+                      children: [
+                        const Icon(LucideIcons.bell, color: Colors.white, size: 28),
+                        if (_lowStockProducts.isNotEmpty && !_isLoadingStock)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Text(
+                                '${_lowStockProducts.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 25),
@@ -129,6 +193,13 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
+          // 🔹 Low Stock Alert
+          if (!_isLoadingStock)
+            LowStockAlert(
+              lowStockProducts: _lowStockProducts,
+              onRefresh: _checkLowStock,
+              onViewStock: () => _onItemTapped(2),
+            ),
           // 🔹 Isi halaman
           Expanded(
             child: Center(

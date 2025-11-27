@@ -8,6 +8,7 @@ import 'package:raffli_motor/models/category.dart';
 import 'package:raffli_motor/models/vehicle_type.dart';
 import 'package:raffli_motor/services/database_service.dart';
 import 'package:raffli_motor/services/storage_service.dart';
+import 'package:raffli_motor/services/auth_service.dart';
 import 'package:raffli_motor/widgets/custom_snackbar.dart';
 import 'package:raffli_motor/widgets/searchable_dropdown.dart';
 import 'package:raffli_motor/utils/currency_input_formatter.dart';
@@ -28,6 +29,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
   final _databaseService = DatabaseService();
   final _storageService = StorageService();
+  final _authService = AuthService();
 
   Category? _selectedCategory;
   VehicleType? _selectedVehicleType;
@@ -40,8 +42,17 @@ class _AddProductPageState extends State<AddProductPage> {
   @override
   void initState() {
     super.initState();
+    _validateSession();
     _categoriesFuture = _databaseService.getCategories();
     _vehicleTypesFuture = _databaseService.getVehicleTypes();
+  }
+
+  // Middleware validation
+  Future<void> _validateSession() async {
+    final isValid = await _authService.validateSession();
+    if (!isValid && mounted) {
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
   }
 
   @override
