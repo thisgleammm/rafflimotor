@@ -6,11 +6,13 @@ import 'package:raffli_motor/widgets/product_card.dart';
 class ProductGrid extends StatelessWidget {
   final List<ProductWithStock> items;
   final Function(int, String?) onDelete;
+  final Function(ProductWithStock) onEdit;
 
   const ProductGrid({
     super.key,
     required this.items,
     required this.onDelete,
+    required this.onEdit,
   });
 
   @override
@@ -23,7 +25,7 @@ class ProductGrid extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.63,
+          childAspectRatio: 0.55,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
@@ -37,9 +39,7 @@ class ProductGrid extends StatelessWidget {
               name: item.name,
               stock: item.stock,
               date: item.updatedAt,
-              onEdit: () {
-                // TODO: Tambahkan logika edit di sini
-              },
+              onEdit: () => onEdit(item),
               onDelete: () => onDelete(item.id, item.image),
             );
           },

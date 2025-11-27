@@ -127,48 +127,70 @@ class _ProductCardState extends State<ProductCard> {
                         maxLines: 1,
                       ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: widget.onEdit,
-                        icon: const Icon(
-                          LucideIcons.pencil,
+                    // Three-dot menu button
+                    PopupMenuButton<String>(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          LucideIcons.moreVertical,
                           color: Color(0xFFDA1818),
                           size: 18,
                         ),
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(6),
-                        constraints: const BoxConstraints(
-                          minWidth: 0,
-                          minHeight: 0,
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
+                      offset: const Offset(0, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      itemBuilder: (BuildContext context) => [
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: const [
+                              Icon(
+                                LucideIcons.pencil,
+                                size: 18,
+                                color: Color(0xFF2D3748),
+                              ),
+                              SizedBox(width: 12),
+                              Text('Edit Produk'),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: () async {
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: const [
+                              Icon(
+                                LucideIcons.trash,
+                                size: 18,
+                                color: Color(0xFFDA1818),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Hapus Produk',
+                                style: TextStyle(
+                                  color: Color(0xFFDA1818),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onSelected: (String value) async {
+                        if (value == 'edit') {
+                          widget.onEdit();
+                        } else if (value == 'delete') {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -184,27 +206,19 @@ class _ProductCardState extends State<ProductCard> {
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.of(context).pop(true),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFFDA1818),
+                                  ),
                                   child: const Text('Hapus'),
                                 ),
                               ],
                             ),
                           );
-                          if (confirm == true) {
+                          if (confirm == true && widget.onDelete != null) {
                             widget.onDelete!();
                           }
-                        },
-                        icon: const Icon(
-                          LucideIcons.trash,
-                          color: Color(0xFFDA1818),
-                          size: 18,
-                        ),
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(6),
-                        constraints: const BoxConstraints(
-                          minWidth: 0,
-                          minHeight: 0,
-                        ),
-                      ),
+                        }
+                      },
                     ),
                   ],
                 ),

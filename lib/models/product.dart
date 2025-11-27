@@ -24,8 +24,8 @@ class Product {
       id: map['id'],
       name: map['name'],
       price: (map['price'] as num).toDouble(),
-      category: map['category']?['name'] ?? 'N/A',
-      vehicleType: map['vehicle_type']?['name'] ?? 'N/A',
+      category: map['category_name'] ?? 'N/A',
+      vehicleType: map['vehicle_type_name'] ?? 'N/A',
       image: map['image'],
       createdAt:
           map['created_at'] == null ? null : DateTime.parse(map['created_at']),

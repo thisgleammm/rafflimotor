@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/session_service.dart';
+import '../services/auth_service.dart';
 import 'dashboard_page.dart';
 
 class LoadPage extends StatefulWidget {
@@ -36,10 +36,18 @@ class _LoadPageState extends State<LoadPage>
 
   Future<void> _checkSession() async {
     await Future.delayed(const Duration(seconds: 2));
-    final username = await SessionService.getValidSession();
+
+    final authService = AuthService();
+    final isValid = await authService.validateSession();
 
     if (mounted) {
-      if (username != null) {
+      if (isValid) {
+        // Session valid, ambil user info
+        final user = await authService.getCurrentUser();
+        final username = user?['username'] ?? 'User';
+
+        if (!mounted) return;
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -47,6 +55,7 @@ class _LoadPageState extends State<LoadPage>
           ),
         );
       } else {
+        // Session invalid/expired, ke login
         Navigator.pushReplacementNamed(context, '/login');
       }
     }

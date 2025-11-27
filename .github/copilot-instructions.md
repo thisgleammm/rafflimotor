@@ -14,16 +14,25 @@ Flutter aplikasi manajemen inventori motor untuk Raffli Motor dengan backend Sup
 - `SessionService` uses `SharedPreferences` for 7-day sessions (no Supabase auth)
 
 ### Custom Authentication
-**NO Supabase Auth** - Uses custom table-based auth:
-- Password: SHA-256 hashing via `SecureSupabaseClient._hashPassword()`
+**Enhanced Session Token System** - Uses custom table-based auth with server-side validation:
+- Password: SHA-256 hashing via `AuthService._hashPassword()`
 - Login: Direct query to `user` table matching username + hashed password
-- Session: `SharedPreferences` stores username + timestamp (7-day expiry)
-- Check `lib/services/secure_supabase_client.dart` for auth pattern
+- Session Token: Cryptographically secure 32-byte random token (256-bit entropy)
+- Session Storage: 
+  - Client: `SharedPreferences` stores username + session_token + timestamp
+  - Server: `user_sessions` table stores token with expiry and device info
+- Validation: Every protected screen validates session with server via `AuthService.validateSession()`
+- Expiry: 7-day duration, checked client-side and server-side
+- Logout: Invalidates session in database + clears local storage
+- Check `lib/services/auth_service.dart` for complete auth pattern
+- Database schema: See `user_sessions_schema.sql` for session table structure
 
 ### Models & Database
-- `Product`: Base product model with category/vehicle_type foreign keys
-- `ProductWithStock`: Extended model from `get_products_with_stock()` RPC that joins products + calculates stock from `stock_movements`
+- `Product`: Base product model with `category_id`/`vehicle_type_id` foreign keys to category and vehicle_type tables
+- `ProductWithStock`: Extended model from `get_products_with_stock()` RPC that joins products with categories/vehicle_types and calculates stock from `stock_movements`
 - Stock tracking: `stock_movements` table with `quantity_change` summed via RPC (not stored directly in products table)
+- Customers: Managed via `customer_id` foreign key in sales table (no auto-upsert trigger - handle in app layer if needed)
+- Product deletion: Use `delete_product(p_product_id)` RPC - cascade deletes stock_movements automatically
 - See `database.sql` for complete schema and RPC function definitions
 
 ## Key Conventions
@@ -105,8 +114,14 @@ flutter run
 1. **Product Stock**: Never query `products` table directly for stock - always use `get_products_with_stock()` RPC
 2. **Image URLs**: Store filename in DB, generate public URL on read using `getPublicUrl()`
 3. **Navigation**: Dashboard uses `PageRouteBuilder` with slide transitions, not `Navigator.pushNamed()`
-4. **Session Check**: `LoadPage` checks `SessionService.getValidSession()` on app start, redirects to dashboard if valid
-5. **Indonesian Locale**: All user-facing text in Indonesian (UI labels, errors, date formats)
+4. **Session Validation**: Protected screens call `AuthService.validateSession()` in `initState()` for middleware-like security
+5. **Session Check**: `LoadPage` checks `AuthService.validateSession()` on app start with server-side validation
+6. **Logout**: Always use `AuthService.logout()` to invalidate session in database, not just local clear
+7. **Indonesian Locale**: All user-facing text in Indonesian (UI labels, errors, date formats)
+8. **Delete Product**: Use `delete_product(p_product_id)` RPC - cascade deletes stock_movements automatically
+9. **Session Token**: Never log session tokens in production - they're cryptographically secure and sensitive
+6. **Delete Product**: Use `delete_product()` RPC - cascade deletes stock_movements automatically
+7. **Customer Management**: Sales auto-creates customers via trigger if name provided (upsert pattern)
 
 ## File Organization
 ```

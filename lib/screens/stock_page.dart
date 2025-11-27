@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:raffli_motor/screens/add_product_page.dart';
+import 'package:raffli_motor/screens/edit_product_page.dart';
 import 'package:raffli_motor/models/product_with_stock.dart';
 import 'package:raffli_motor/services/database_service.dart';
 import 'package:raffli_motor/services/storage_service.dart';
+import 'package:raffli_motor/services/auth_service.dart';
 import 'package:raffli_motor/widgets/custom_snackbar.dart';
 import 'package:raffli_motor/widgets/product_grid.dart';
 import 'package:raffli_motor/widgets/vehicle_type_filter.dart';
@@ -20,6 +22,7 @@ class _StockPageState extends State<StockPage> {
   final TextEditingController _searchController = TextEditingController();
   final DatabaseService _databaseService = DatabaseService();
   final StorageService _storageService = StorageService();
+  final AuthService _authService = AuthService();
 
   String _selectedVehicleType = 'All';
   List<ProductWithStock> _inventoryItems = [];
@@ -28,13 +31,27 @@ class _StockPageState extends State<StockPage> {
   @override
   void initState() {
     super.initState();
-    _refresh();
+    _validateSessionAndRefresh();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Middleware validation: Cek session sebelum load data
+  Future<void> _validateSessionAndRefresh() async {
+    final isValid = await _authService.validateSession();
+
+    if (!isValid && mounted) {
+      // Session invalid, redirect ke login
+      Navigator.of(context).pushReplacementNamed('/login');
+      return;
+    }
+
+    // Session valid, load data
+    _refresh();
   }
 
   Future<void> _refresh() async {
@@ -64,15 +81,27 @@ class _StockPageState extends State<StockPage> {
     }
   }
 
+  Future<void> _editProduct(ProductWithStock product) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProductPage(product: product),
+      ),
+    );
+    if (result == true) {
+      _refresh();
+    }
+  }
+
   List<ProductWithStock> get _filteredItems {
     return _inventoryItems.where((item) {
-      final matchesSearch = _searchController.text.isEmpty ||
-          item.name
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase());
-      final matchesVehicleType = _selectedVehicleType == 'All' ||
-          item.vehicleType.toLowerCase() ==
-              _selectedVehicleType.toLowerCase();
+      final matchesSearch =
+          _searchController.text.isEmpty ||
+          item.name.toLowerCase().contains(
+            _searchController.text.toLowerCase(),
+          );
+      final matchesVehicleType =
+          _selectedVehicleType == 'All' ||
+          item.vehicleType.toLowerCase() == _selectedVehicleType.toLowerCase();
       return matchesSearch && matchesVehicleType;
     }).toList();
   }
@@ -147,12 +176,15 @@ class _StockPageState extends State<StockPage> {
                           prefixIcon: const Icon(LucideIcons.search),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 0),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
-                            borderSide:
-                                const BorderSide(color: Colors.grey, width: 1),
+                            borderSide: const BorderSide(
+                              color: Colors.grey,
+                              width: 1,
+                            ),
                           ),
                         ),
                         onChanged: (_) => setState(() {}),
@@ -160,8 +192,10 @@ class _StockPageState extends State<StockPage> {
                       const SizedBox(height: 16),
                       const Text(
                         'Jelajahi Stok Barang',
-                        style:
-                            TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       VehicleTypeFilter(
@@ -176,9 +210,12 @@ class _StockPageState extends State<StockPage> {
                   ),
                 ),
               ),
-              _isLoading ? const _LoadingProductGrid() : ProductGrid(
+              _isLoading
+                  ? const _StockPageLoadingGrid()
+                  : ProductGrid(
                       items: _filteredItems,
                       onDelete: _deleteProduct,
+                      onEdit: _editProduct,
                     ),
             ],
           ),
@@ -200,8 +237,8 @@ class _StockPageState extends State<StockPage> {
   }
 }
 
-class _LoadingProductGrid extends StatelessWidget {
-  const _LoadingProductGrid({super.key});
+class _StockPageLoadingGrid extends StatelessWidget {
+  const _StockPageLoadingGrid();
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +249,7 @@ class _LoadingProductGrid extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.63,
+          childAspectRatio: 0.55,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) => const ProductCard.loading(),

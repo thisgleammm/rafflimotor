@@ -7,12 +7,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class DatabaseService {
   final SupabaseClient _supabaseClient = Supabase.instance.client;
 
-  Future<List<ProductWithStock>> getProductsWithStock(
-      {int limit = 10, int offset = 0}) async {
+  Future<List<ProductWithStock>> getProductsWithStock({
+    int limit = 10,
+    int offset = 0,
+  }) async {
     try {
-      final response = await _supabaseClient.rpc(
-        'get_products_with_stock',
-      );
+      final response = await _supabaseClient.rpc('get_products_with_stock');
 
       if (response.isNotEmpty) {
         final List<ProductWithStock> productList = (response as List)
@@ -56,15 +56,17 @@ class DatabaseService {
     required int stock,
   }) async {
     try {
-      await _supabaseClient
-          .rpc('create_product_with_initial_stock', params: {
-        'p_name': name,
-        'p_price': price,
-        'p_category_id': categoryId,
-        'p_vehicle_type_id': vehicleTypeId,
-        'p_image_url': imageUrl,
-        'p_stock': stock,
-      });
+      await _supabaseClient.rpc(
+        'create_product_with_initial_stock',
+        params: {
+          'p_name': name,
+          'p_price': price,
+          'p_category_id': categoryId,
+          'p_vehicle_type_id': vehicleTypeId,
+          'p_image_url': imageUrl,
+          'p_stock': stock,
+        },
+      );
     } catch (e) {
       debugPrint('Error creating product with stock: $e');
       rethrow;
@@ -73,9 +75,38 @@ class DatabaseService {
 
   Future<void> deleteProduct(int productId) async {
     try {
-      await _supabaseClient.from('products').delete().eq('id', productId);
+      await _supabaseClient.rpc(
+        'delete_product',
+        params: {'p_product_id': productId},
+      );
     } catch (e) {
       debugPrint('Error deleting product: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateProduct({
+    required int productId,
+    required String name,
+    required int price,
+    required int categoryId,
+    required int vehicleTypeId,
+    String? imageUrl,
+  }) async {
+    try {
+      await _supabaseClient.rpc(
+        'update_product',
+        params: {
+          'p_product_id': productId,
+          'p_name': name,
+          'p_price': price,
+          'p_category_id': categoryId,
+          'p_vehicle_type_id': vehicleTypeId,
+          'p_image_url': imageUrl,
+        },
+      );
+    } catch (e) {
+      debugPrint('Error updating product: $e');
       rethrow;
     }
   }

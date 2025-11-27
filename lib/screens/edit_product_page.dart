@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:raffli_motor/models/category.dart';
+import 'package:raffli_motor/models/product_with_stock.dart';
 import 'package:raffli_motor/models/vehicle_type.dart';
 import 'package:raffli_motor/services/database_service.dart';
 import 'package:raffli_motor/services/storage_service.dart';
@@ -12,20 +13,20 @@ import 'package:raffli_motor/services/auth_service.dart';
 import 'package:raffli_motor/widgets/custom_snackbar.dart';
 import 'package:raffli_motor/widgets/searchable_dropdown.dart';
 import 'package:raffli_motor/utils/currency_input_formatter.dart';
-import 'package:raffli_motor/widgets/stock_counter.dart';
 
-class AddProductPage extends StatefulWidget {
-  const AddProductPage({super.key});
+class EditProductPage extends StatefulWidget {
+  final ProductWithStock product;
+  
+  const EditProductPage({super.key, required this.product});
 
   @override
-  State<AddProductPage> createState() => _AddProductPageState();
+  State<EditProductPage> createState() => _EditProductPageState();
 }
 
-class _AddProductPageState extends State<AddProductPage> {
+class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
-  final _stockController = TextEditingController();
 
   final _databaseService = DatabaseService();
   final _storageService = StorageService();
@@ -34,6 +35,7 @@ class _AddProductPageState extends State<AddProductPage> {
   Category? _selectedCategory;
   VehicleType? _selectedVehicleType;
   XFile? _imageFile;
+  String? _existingImageUrl;
   bool _isLoading = false;
 
   late Future<List<Category>> _categoriesFuture;
@@ -45,6 +47,30 @@ class _AddProductPageState extends State<AddProductPage> {
     _validateSession();
     _categoriesFuture = _databaseService.getCategories();
     _vehicleTypesFuture = _databaseService.getVehicleTypes();
+    
+    // Pre-fill form dengan data product yang ada
+    _nameController.text = widget.product.name;
+    _priceController.text = widget.product.price.toString();
+    _existingImageUrl = widget.product.image;
+    
+    // Load kategori dan vehicle type untuk pre-select
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    final categories = await _categoriesFuture;
+    final vehicleTypes = await _vehicleTypesFuture;
+    
+    setState(() {
+      _selectedCategory = categories.firstWhere(
+        (c) => c.name == widget.product.category,
+        orElse: () => categories.first,
+      );
+      _selectedVehicleType = vehicleTypes.firstWhere(
+        (v) => v.name == widget.product.vehicleType,
+        orElse: () => vehicleTypes.first,
+      );
+    });
   }
 
   // Middleware validation
@@ -59,7 +85,6 @@ class _AddProductPageState extends State<AddProductPage> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
-    _stockController.dispose();
     super.dispose();
   }
 
@@ -137,34 +162,44 @@ class _AddProductPageState extends State<AddProductPage> {
     }
   }
 
-  Future<void> _saveProduct() async {
+  Future<void> _updateProduct() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        String? imageUrl;
+        String? imageUrl = _existingImageUrl;
+        
+        // Upload gambar baru jika ada
         if (_imageFile != null) {
+          // Hapus gambar lama jika ada
+          if (_existingImageUrl != null) {
+            try {
+              await _storageService.deleteImage(_existingImageUrl!);
+            } catch (e) {
+              debugPrint('Error deleting old image: $e');
+            }
+          }
           imageUrl = await _storageService.uploadImage(_imageFile!);
         }
 
-        await _databaseService.createProduct(
+        await _databaseService.updateProduct(
+          productId: widget.product.id,
           name: _nameController.text,
           price: int.parse(_priceController.text.replaceAll('.', '')),
           categoryId: _selectedCategory!.id,
           vehicleTypeId: _selectedVehicleType!.id,
           imageUrl: imageUrl,
-          stock: int.parse(_stockController.text),
         );
 
         if (mounted) {
-          CustomSnackBar.showSuccess(context, 'Produk berhasil ditambahkan!');
-          Navigator.of(context).pop(true); // Return true to indicate success
+          CustomSnackBar.showSuccess(context, 'Produk berhasil diperbarui!');
+          Navigator.of(context).pop(true); // Return true untuk refresh list
         }
       } catch (e) {
         if (mounted) {
-          CustomSnackBar.showError(context, 'Gagal menambahkan produk: $e');
+          CustomSnackBar.showError(context, 'Gagal memperbarui produk: $e');
         }
       } finally {
         setState(() {
@@ -180,9 +215,9 @@ class _AddProductPageState extends State<AddProductPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: Color(0xFFDA1818),
-            borderRadius: const BorderRadius.only(
+            borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
@@ -212,7 +247,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   ),
                   const SizedBox(width: 16),
                   const Text(
-                    'Tambah Produk Baru',
+                    'Edit Produk',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -255,11 +290,11 @@ class _AddProductPageState extends State<AddProductPage> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _priceController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Harga Beli per Pcs',
                   hintText: '0',
                   prefixText: 'Rp ',
-                  border: const OutlineInputBorder(),
+                  border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -276,26 +311,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   }
                   if (price > 999999999999) {
                     return 'Harga terlalu besar';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              StockCounter(
-                controller: _stockController,
-                labelText: 'Stok Awal',
-                minValue: 0,
-                maxValue: 999999,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Stok tidak boleh kosong';
-                  }
-                  final stock = int.tryParse(value);
-                  if (stock == null || stock < 0) {
-                    return 'Stok tidak valid';
-                  }
-                  if (stock > 999999) {
-                    return 'Stok terlalu banyak';
                   }
                   return null;
                 },
@@ -363,12 +378,54 @@ class _AddProductPageState extends State<AddProductPage> {
                         height: 80,
                         fit: BoxFit.cover,
                       ),
+                    )
+                  else if (_existingImageUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _storageService.getPublicUrl(_existingImageUrl!),
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[300],
+                            child: const Icon(LucideIcons.image, color: Colors.grey),
+                          );
+                        },
+                      ),
                     ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.info, color: Colors.blue[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Stok tidak dapat diubah di sini. Gunakan halaman Stock untuk mengelola stok produk.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _isLoading ? null : _saveProduct,
+                onPressed: _isLoading ? null : _updateProduct,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDA1818),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -376,7 +433,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'Simpan Produk',
+                        'Perbarui Produk',
                         style: TextStyle(color: Colors.white),
                       ),
               ),
