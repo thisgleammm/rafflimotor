@@ -46,6 +46,8 @@ class _LoadPageState extends State<LoadPage>
         final user = await authService.getCurrentUser();
         final username = user?['username'] ?? 'User';
 
+        if (!mounted) return;
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
