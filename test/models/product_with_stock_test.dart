@@ -150,5 +150,69 @@ void main() {
         expect(product.price, 99999.99);
       });
     });
+
+    group('Image URL Handling', () {
+      test('should strip file:/// prefix from image path', () {
+        // Arrange
+        final map = {
+          'id': 8,
+          'name': 'Image Test',
+          'price': 10000,
+          'category_name': 'Test',
+          'vehicle_type_name': 'Motor',
+          'stock': 10,
+          'image': 'file:///storage/emulated/0/Pictures/image.jpg',
+        };
+
+        // Act
+        final product = ProductWithStock.fromMap(map);
+
+        // Assert
+        // Note: Since Supabase is not initialized in tests, it should fall back to the stripped path
+        // or the original path if the try-catch block catches the error.
+        // The logic strips file:/// first, then tries Supabase.
+        // If Supabase fails, it keeps the stripped path (or whatever was in imageUrl variable).
+        expect(product.image, 'storage/emulated/0/Pictures/image.jpg');
+      });
+
+      test('should preserve existing http/https URLs', () {
+        // Arrange
+        final map = {
+          'id': 9,
+          'name': 'URL Test',
+          'price': 10000,
+          'category_name': 'Test',
+          'vehicle_type_name': 'Motor',
+          'stock': 10,
+          'image': 'https://example.com/image.jpg',
+        };
+
+        // Act
+        final product = ProductWithStock.fromMap(map);
+
+        // Assert
+        expect(product.image, 'https://example.com/image.jpg');
+      });
+
+      test('should handle filename only (fallback when Supabase not init)', () {
+        // Arrange
+        final map = {
+          'id': 10,
+          'name': 'Filename Test',
+          'price': 10000,
+          'category_name': 'Test',
+          'vehicle_type_name': 'Motor',
+          'stock': 10,
+          'image': 'image.jpg',
+        };
+
+        // Act
+        final product = ProductWithStock.fromMap(map);
+
+        // Assert
+        // Should return the filename as is because Supabase.instance.client will throw/fail in test env
+        expect(product.image, 'image.jpg');
+      });
+    });
   });
 }

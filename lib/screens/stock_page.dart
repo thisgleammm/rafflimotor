@@ -211,7 +211,7 @@ class _StockPageState extends State<StockPage> {
                 ),
               ),
               _isLoading
-                  ? const _StockPageLoadingGrid()
+                  ? const _LoadingProductGrid()
                   : ProductGrid(
                       items: _filteredItems,
                       onDelete: _deleteProduct,
@@ -237,8 +237,8 @@ class _StockPageState extends State<StockPage> {
   }
 }
 
-class _StockPageLoadingGrid extends StatelessWidget {
-  const _StockPageLoadingGrid();
+class _LoadingProductGrid extends StatelessWidget {
+  const _LoadingProductGrid();
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +249,7 @@ class _StockPageLoadingGrid extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.55,
+          childAspectRatio: 0.63,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) => const ProductCard.loading(),
