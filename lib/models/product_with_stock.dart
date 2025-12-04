@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class ProductWithStock {
   final int id;
   final String name;
@@ -22,17 +24,39 @@ class ProductWithStock {
   });
 
   factory ProductWithStock.fromMap(Map<String, dynamic> map) {
+    String? imageUrl = map['image'];
+
+    if (imageUrl != null) {
+      // Handle file:/// prefix if present (legacy data)
+      if (imageUrl.startsWith('file:///')) {
+        imageUrl = imageUrl.replaceFirst('file:///', '');
+      }
+
+      // If it's just a filename (doesn't start with http and not a local path), generate public URL
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+        try {
+          imageUrl = Supabase.instance.client.storage
+              .from('productimage_bucket')
+              .getPublicUrl(imageUrl);
+        } catch (e) {
+          // Fallback or keep original if Supabase is not initialized (e.g. testing)
+        }
+      }
+    }
+
     return ProductWithStock(
       id: map['id'],
       name: map['name'],
       price: (map['price'] as num).toDouble(),
       category: map['category_name'] ?? 'N/A',
       vehicleType: map['vehicle_type_name'] ?? 'N/A',
-      image: map['image'],
-      createdAt:
-          map['created_at'] == null ? null : DateTime.parse(map['created_at']),
-      updatedAt:
-          map['updated_at'] == null ? null : DateTime.parse(map['updated_at']),
+      image: imageUrl,
+      createdAt: map['created_at'] == null
+          ? null
+          : DateTime.parse(map['created_at']),
+      updatedAt: map['updated_at'] == null
+          ? null
+          : DateTime.parse(map['updated_at']),
       stock: (map['stock'] as num).toInt(),
     );
   }

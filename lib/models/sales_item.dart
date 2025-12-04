@@ -1,0 +1,34 @@
+class SalesItem {
+  final int? id;
+  final int? saleId;
+  final int productId;
+  final int quantity;
+  final double price;
+
+  SalesItem({
+    this.id,
+    this.saleId,
+    required this.productId,
+    required this.quantity,
+    required this.price,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'product_id': productId,
+      'quantity': quantity,
+      'price': price,
+      if (saleId != null) 'sale_id': saleId,
+    };
+  }
+
+  factory SalesItem.fromMap(Map<String, dynamic> map) {
+    return SalesItem(
+      id: map['id'],
+      saleId: map['sale_id'],
+      productId: map['product_id'],
+      quantity: map['quantity'],
+      price: (map['price'] as num).toDouble(),
+    );
+  }
+}
