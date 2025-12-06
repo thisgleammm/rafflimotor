@@ -21,7 +21,7 @@ class LowStockAlert extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -31,7 +31,7 @@ class LowStockAlert extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFFDA1818).withValues(alpha: 0.3),
           width: 1.5,
@@ -42,29 +42,29 @@ class LowStockAlert extends StatelessWidget {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFDA1818).withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
               ),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDA1818),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Icon(
                     LucideIcons.alertTriangle,
                     color: Colors.white,
-                    size: 20,
+                    size: 16,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,18 +72,15 @@ class LowStockAlert extends StatelessWidget {
                       const Text(
                         'Peringatan Stok Rendah!',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFDA1818),
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Text(
                         '${lowStockProducts.length} produk memerlukan perhatian',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                       ),
                     ],
                   ),
@@ -92,7 +89,7 @@ class LowStockAlert extends StatelessWidget {
                   onPressed: onRefresh,
                   icon: const Icon(
                     LucideIcons.refreshCw,
-                    size: 20,
+                    size: 18,
                     color: Color(0xFFDA1818),
                   ),
                   padding: EdgeInsets.zero,
@@ -104,50 +101,73 @@ class LowStockAlert extends StatelessWidget {
 
           // Product List
           Container(
-            constraints: const BoxConstraints(maxHeight: 200),
+            constraints: const BoxConstraints(maxHeight: 140),
             child: ListView.builder(
               shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: lowStockProducts.length,
               itemBuilder: (context, index) {
                 final product = lowStockProducts[index];
                 return Container(
                   margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 3,
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
                   child: Row(
                     children: [
+                      // Product image
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          image: product.image != null
+                              ? DecorationImage(
+                                  image: NetworkImage(product.image!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: product.image == null
+                            ? const Icon(
+                                LucideIcons.package,
+                                color: Colors.grey,
+                                size: 20,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 10),
                       // Stock badge
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: product.stock == 0
                               ? Colors.black87
                               : const Color(0xFFDA1818).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Column(
                           children: [
                             Text(
                               '${product.stock}',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: product.stock == 0
                                     ? Colors.white
@@ -157,7 +177,7 @@ class LowStockAlert extends StatelessWidget {
                             Text(
                               'unit',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 9,
                                 color: product.stock == 0
                                     ? Colors.white70
                                     : const Color(0xFFDA1818),
@@ -166,7 +186,7 @@ class LowStockAlert extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       // Product info
                       Expanded(
                         child: Column(
@@ -175,41 +195,41 @@ class LowStockAlert extends StatelessWidget {
                             Text(
                               product.name,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF2D3748),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Row(
                               children: [
                                 Icon(
                                   LucideIcons.tag,
-                                  size: 12,
+                                  size: 11,
                                   color: Colors.grey[600],
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 3),
                                 Text(
                                   product.category,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     color: Colors.grey[600],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Icon(
                                   LucideIcons.car,
-                                  size: 12,
+                                  size: 11,
                                   color: Colors.grey[600],
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 3),
                                 Expanded(
                                   child: Text(
                                     product.vehicleType,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Colors.grey[600],
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -223,19 +243,19 @@ class LowStockAlert extends StatelessWidget {
                       // Status indicator
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: 6,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: product.stock == 0
                               ? Colors.black87
                               : const Color(0xFFDA1818),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           product.stock == 0 ? 'HABIS' : 'RENDAH',
                           style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: 0.5,
@@ -251,19 +271,19 @@ class LowStockAlert extends StatelessWidget {
 
           // Action Button
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: onViewStock,
-                icon: const Icon(LucideIcons.package, size: 18),
+                icon: const Icon(LucideIcons.package, size: 16),
                 label: const Text('Kelola Stok Produk'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDA1818),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 0,
                 ),

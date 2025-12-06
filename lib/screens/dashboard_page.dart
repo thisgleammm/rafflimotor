@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import '../models/product_with_stock.dart';
 import '../widgets/bottom_navbar.dart';
 import '../widgets/low_stock_alert.dart';
+import '../widgets/sales_type_sheet.dart';
 import 'stock_page.dart'; // ✅ import halaman inventory
 
 class DashboardPage extends StatefulWidget {
@@ -145,7 +146,11 @@ class _DashboardPageState extends State<DashboardPage> {
                     // Notification badge with count
                     Stack(
                       children: [
-                        const Icon(LucideIcons.bell, color: Colors.white, size: 28),
+                        const Icon(
+                          LucideIcons.bell,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                         if (_lowStockProducts.isNotEmpty && !_isLoadingStock)
                           Positioned(
                             right: 0,
@@ -220,7 +225,13 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: const Color(0xFFDA1818),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.white,
-        onPressed: () {},
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const SalesTypeSheet(),
+          );
+        },
         shape: const CircleBorder(),
         child: const Icon(LucideIcons.plus, color: Color(0xFFDA1818), size: 40),
       ),
