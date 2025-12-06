@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
-import 'dart:convert'; // Import for base64Decode
 
 class ProductCard extends StatefulWidget {
   final String imageUrl;
@@ -26,14 +25,14 @@ class ProductCard extends StatefulWidget {
   }) : isLoading = false;
 
   const ProductCard.loading({super.key})
-      : imageUrl = '',
-        name = '',
-        stock = 0,
-        date = null,
-        onEdit = _emptyOnEdit,
-        onDelete = null,
-        onLoad = null,
-        isLoading = true;
+    : imageUrl = '',
+      name = '',
+      stock = 0,
+      date = null,
+      onEdit = _emptyOnEdit,
+      onDelete = null,
+      onLoad = null,
+      isLoading = true;
 
   static void _emptyOnEdit() {}
 
@@ -61,10 +60,6 @@ class _ProductCardState extends State<ProductCard> {
         ? DateFormat('dd / MM / yyyy').format(widget.date!)
         : 'N/A';
 
-    // Base64 encoded 1x1 transparent GIF
-    const String transparentGif =
-        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -81,36 +76,61 @@ class _ProductCardState extends State<ProductCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 🖼️ Gambar barang
-          ClipRRect(
-            borderRadius: const BorderRadius.all(
-              Radius.circular(20),
+          Container(
+            margin: const EdgeInsets.all(12),
+            height: 140,
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(15),
             ),
-            child: Container(
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: FadeInImage.memoryNetwork(
-                  placeholder: base64Decode(transparentGif),
-                  image: widget.imageUrl,
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                  imageErrorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.error);
-                  },
-                ),
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child:
+                  widget.imageUrl.isNotEmpty &&
+                      !widget.imageUrl.contains('placeholder')
+                  ? Image.network(
+                      widget.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 140,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFDA1818),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('Error loading image: $error');
+                        return const Center(
+                          child: Icon(
+                            LucideIcons.package,
+                            color: Colors.grey,
+                            size: 50,
+                          ),
+                        );
+                      },
+                    )
+                  : const Center(
+                      child: Icon(
+                        LucideIcons.package,
+                        color: Colors.grey,
+                        size: 50,
+                      ),
+                    ),
             ),
           ),
           // 🔹 Deskripsi
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -179,9 +199,7 @@ class _ProductCardState extends State<ProductCard> {
                               SizedBox(width: 12),
                               Text(
                                 'Hapus Produk',
-                                style: TextStyle(
-                                  color: Color(0xFFDA1818),
-                                ),
+                                style: TextStyle(color: Color(0xFFDA1818)),
                               ),
                             ],
                           ),
@@ -196,7 +214,8 @@ class _ProductCardState extends State<ProductCard> {
                             builder: (context) => AlertDialog(
                               title: const Text('Hapus Produk'),
                               content: const Text(
-                                  'Apakah Anda yakin ingin menghapus produk ini?'),
+                                'Apakah Anda yakin ingin menghapus produk ini?',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () =>
@@ -249,10 +268,7 @@ class _ProductCardState extends State<ProductCard> {
                 const SizedBox(height: 4),
                 Text(
                   'Terakhir input $formattedDate',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
                 ),
               ],
             ),
