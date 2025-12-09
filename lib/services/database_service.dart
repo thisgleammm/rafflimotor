@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:raffli_motor/models/category.dart';
 import 'package:raffli_motor/models/product_with_stock.dart';
 import 'package:raffli_motor/models/vehicle_type.dart';
+import 'package:raffli_motor/models/sale.dart';
+import 'package:raffli_motor/models/sale_item.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DatabaseService {
@@ -12,7 +14,9 @@ class DatabaseService {
     int offset = 0,
   }) async {
     try {
-      final response = await _supabaseClient.rpc('get_products_with_stock');
+      final response = await _supabaseClient
+          .rpc('get_products_with_stock')
+          .range(offset, offset + limit - 1);
 
       if (response.isNotEmpty) {
         final List<ProductWithStock> productList = (response as List)
@@ -111,6 +115,26 @@ class DatabaseService {
     }
   }
 
+  Future<void> addStock(int productId, int quantity) async {
+    try {
+      // Insert into stock_movements
+      await _supabaseClient.from('stock_movements').insert({
+        'product_id': productId,
+        'quantity_change': quantity,
+        'type': 'manual_add',
+      });
+
+      // Update updated_at timestamp to move product to top of list
+      await _supabaseClient
+          .from('products')
+          .update({'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', productId);
+    } catch (e) {
+      debugPrint('Error adding stock: $e');
+      rethrow;
+    }
+  }
+
   Future<void> createSale({
     String? customerName,
     required String type,
@@ -118,20 +142,14 @@ class DatabaseService {
     required List<Map<String, dynamic>> items,
   }) async {
     try {
-      // 1. Calculate total price
-      double totalPrice = serviceFee;
-      for (var item in items) {
-        totalPrice += (item['price'] as num) * (item['quantity'] as num);
-      }
-
       // 2. Insert into sales table
       final saleResponse = await _supabaseClient
           .from('sales')
           .insert({
             'customer_name': customerName,
             'type': type,
-            'service_fee': serviceFee,
-            'total_price': totalPrice,
+            'service_fee': serviceFee
+                .toInt(), // Convert to int for bigint column
           })
           .select()
           .single();
@@ -140,41 +158,203 @@ class DatabaseService {
 
       // 3. Insert into sale_items table and update stock
       for (var item in items) {
-        await _supabaseClient.from('sale_items').insert({
+        await _supabaseClient.from('sales_details').insert({
           'sale_id': saleId,
           'product_id': item['product_id'],
           'quantity': item['quantity'],
           'price': item['price'],
         });
 
-        // 4. Update stock (decrement)
-        // We can use a stored procedure if available, or just update directly.
-        // Since we don't have a specific 'decrement_stock' RPC visible,
-        // we'll try to use a custom RPC if it existed, but here we might need to
-        // fetch current stock and update it, OR assume there's a trigger.
-        // Given the previous 'create_product_with_initial_stock' RPC, maybe there is one.
-        // But for now, let's try to update the product directly by fetching first?
-        // Actually, to be safe and atomic, let's assume we can just call an RPC or
-        // if we must do it client side:
-
-        // Fetch current product to get stock
-        final productResponse = await _supabaseClient
-            .from('products')
-            .select('stock')
-            .eq('id', item['product_id'])
-            .single();
-
-        final currentStock = productResponse['stock'] as int;
-        final newStock = currentStock - (item['quantity'] as int);
-
-        await _supabaseClient
-            .from('products')
-            .update({'stock': newStock})
-            .eq('id', item['product_id']);
+        // 4. Update stock via stock_movements
+        await _supabaseClient.from('stock_movements').insert({
+          'product_id': item['product_id'],
+          'quantity_change': -item['quantity'], // Negative for sales
+          'type': 'sale',
+        });
       }
     } catch (e) {
       debugPrint('Error creating sale: $e');
       rethrow;
+    }
+  }
+
+  // Get sales history for a specific month
+  Future<List<Sale>> getSalesHistory({
+    required int year,
+    required int month,
+  }) async {
+    try {
+      final startDate = DateTime(year, month, 1);
+      final endDate = DateTime(year, month + 1, 1);
+
+      final response = await _supabaseClient
+          .from('sales')
+          .select()
+          .gte('created_at', startDate.toIso8601String())
+          .lt('created_at', endDate.toIso8601String())
+          .order('created_at', ascending: false);
+
+      return (response as List).map((item) => Sale.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint('Error getting sales history: $e');
+      return [];
+    }
+  }
+
+  // Get sale items with product names for a specific sale
+  Future<List<SaleItem>> getSaleItems(int saleId) async {
+    try {
+      final response = await _supabaseClient
+          .from('sales_details')
+          .select('*, products(name)')
+          .eq('sale_id', saleId);
+
+      return (response as List).map((item) {
+        return SaleItem.fromMap({
+          ...item,
+          'product_name': item['products']['name'],
+        });
+      }).toList();
+    } catch (e) {
+      debugPrint('Error getting sale items: $e');
+      return [];
+    }
+  }
+
+  // Get low stock products with direct query
+  Future<List<ProductWithStock>> getLowStockProducts({
+    int limit = 5,
+    int threshold = 3,
+  }) async {
+    try {
+      final response = await _supabaseClient
+          .rpc('get_products_with_stock')
+          .lte('stock', threshold)
+          .order('stock', ascending: true)
+          .limit(limit);
+
+      return (response as List)
+          .map((item) => ProductWithStock.fromMap(item))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting low stock products: $e');
+      return [];
+    }
+  }
+
+  // Get weekly sales data (last 7 days)
+  Future<List<Map<String, dynamic>>> getWeeklySales() async {
+    try {
+      final now = DateTime.now();
+      final startDate = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 6));
+      final endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final response = await _supabaseClient
+          .from('sales')
+          .select('created_at, service_fee')
+          .gte('created_at', startDate.toIso8601String())
+          .lte('created_at', endDate.toIso8601String())
+          .order('created_at', ascending: true);
+
+      // Group sales by date
+      final Map<String, int> salesByDate = {};
+
+      // Initialize all 7 days with 0
+      for (int i = 0; i < 7; i++) {
+        final date = startDate.add(Duration(days: i));
+        final dateKey =
+            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+        salesByDate[dateKey] = 0;
+      }
+
+      // Count sales per day
+      for (var sale in response) {
+        final createdAt = DateTime.parse(sale['created_at']);
+        final dateKey =
+            '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}';
+        salesByDate[dateKey] = (salesByDate[dateKey] ?? 0) + 1;
+      }
+
+      // Convert to list format for chart
+      return salesByDate.entries
+          .map((entry) => {'date': entry.key, 'count': entry.value})
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting weekly sales: $e');
+      return [];
+    }
+  }
+
+  // Get today's sales transactions
+  Future<List<Sale>> getTodaySales() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final response = await _supabaseClient
+          .from('sales')
+          .select()
+          .gte('created_at', startOfDay.toIso8601String())
+          .lte('created_at', endOfDay.toIso8601String())
+          .order('created_at', ascending: false);
+
+      return (response as List).map((item) => Sale.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint('Error getting today\'s sales: $e');
+      return [];
+    }
+  }
+
+  // Get monthly total revenue
+  Future<double> getMonthlyRevenue({
+    required int year,
+    required int month,
+  }) async {
+    try {
+      final startDate = DateTime(year, month, 1);
+      final endDate = DateTime(year, month + 1, 1);
+
+      final response = await _supabaseClient
+          .from('sales')
+          .select('service_fee')
+          .gte('created_at', startDate.toIso8601String())
+          .lt('created_at', endDate.toIso8601String());
+
+      // Get all sale items for this month to calculate total revenue
+      final salesResponse = await _supabaseClient
+          .from('sales')
+          .select('id')
+          .gte('created_at', startDate.toIso8601String())
+          .lt('created_at', endDate.toIso8601String());
+
+      double totalRevenue = 0;
+
+      // Add service fees
+      for (var sale in response) {
+        totalRevenue += (sale['service_fee'] as num).toDouble();
+      }
+
+      // Add product sales
+      for (var sale in salesResponse) {
+        final saleItems = await _supabaseClient
+            .from('sales_details')
+            .select('quantity, price')
+            .eq('sale_id', sale['id']);
+
+        for (var item in saleItems) {
+          totalRevenue += (item['quantity'] as num) * (item['price'] as num);
+        }
+      }
+
+      return totalRevenue;
+    } catch (e) {
+      debugPrint('Error getting monthly revenue: $e');
+      return 0;
     }
   }
 }

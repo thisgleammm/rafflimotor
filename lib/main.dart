@@ -33,13 +33,23 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFDA1818),
+          primary: const Color(0xFFDA1818),
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFFDA1818),
+          selectionHandleColor: Color(0xFFDA1818),
+          selectionColor: Color(0x4DDA1818), // Red with opacity
+        ),
       ),
-      home: Scaffold ( body: const LoadPage(), ),
+      home: Scaffold(body: const LoadPage()),
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) =>
             const DashboardPage(username: ''), // 🔹 route dashboard
-        '/inventory': (context) => const StockPage(), // 🔹 route inventory
+        '/inventory': (context) =>
+            const StockPage(), // Direct access to inventory
       },
     );
   }

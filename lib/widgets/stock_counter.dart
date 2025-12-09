@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class StockCounter extends StatefulWidget {
   final TextEditingController controller;
@@ -51,57 +52,78 @@ class _StockCounterState extends State<StockCounter> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.labelText,
-          style:
-              Theme.of(context).inputDecorationTheme.labelStyle ??
-              const TextStyle(color: Colors.black),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(5),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Row(
-            children: [
-              IconButton(icon: const Icon(Icons.remove), onPressed: _decrement),
-              Expanded(
-                child: TextFormField(
-                  controller: widget.controller,
-                  textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: widget.minValue.toString(),
-                  ),
-                  validator: widget.validator,
-                  onChanged: (value) {
-                    int? newStock = int.tryParse(value);
-                    if (newStock != null) {
-                      if (newStock >= widget.minValue &&
-                          newStock <= widget.maxValue) {
-                        _currentStock = newStock;
-                      } else if (newStock < widget.minValue) {
-                        _currentStock = widget.minValue;
-                        widget.controller.text = _currentStock.toString();
-                      } else if (newStock > widget.maxValue) {
-                        _currentStock = widget.maxValue;
-                        widget.controller.text = _currentStock.toString();
-                      }
-                    }
-                  },
-                ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Minus button
+          IconButton(
+            onPressed: _decrement,
+            icon: const Icon(LucideIcons.minus, size: 20),
+            color: _currentStock > widget.minValue
+                ? const Color(0xFFDA1818)
+                : Colors.grey[400],
+            padding: const EdgeInsets.all(16),
+          ),
+          // Text field
+          Expanded(
+            child: TextFormField(
+              controller: widget.controller,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: '0',
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                contentPadding: EdgeInsets.zero,
               ),
-              IconButton(icon: const Icon(Icons.add), onPressed: _increment),
-            ],
+              validator: widget.validator,
+              onChanged: (value) {
+                int? newStock = int.tryParse(value);
+                if (newStock != null) {
+                  if (newStock >= widget.minValue &&
+                      newStock <= widget.maxValue) {
+                    setState(() {
+                      _currentStock = newStock;
+                    });
+                  } else if (newStock < widget.minValue) {
+                    setState(() {
+                      _currentStock = widget.minValue;
+                      widget.controller.text = _currentStock.toString();
+                    });
+                  } else if (newStock > widget.maxValue) {
+                    setState(() {
+                      _currentStock = widget.maxValue;
+                      widget.controller.text = _currentStock.toString();
+                    });
+                  }
+                }
+              },
+            ),
           ),
-        ),
-      ],
+          // Plus button
+          IconButton(
+            onPressed: _increment,
+            icon: const Icon(LucideIcons.plus, size: 20),
+            color: _currentStock < widget.maxValue
+                ? const Color(0xFFDA1818)
+                : Colors.grey[400],
+            padding: const EdgeInsets.all(16),
+          ),
+        ],
+      ),
     );
   }
 }
