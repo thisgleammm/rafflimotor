@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:raffli_motor/models/category.dart';
 import 'package:raffli_motor/models/product_with_stock.dart';
 import 'package:raffli_motor/models/vehicle_type.dart';
@@ -11,12 +11,18 @@ import 'package:raffli_motor/services/database_service.dart';
 import 'package:raffli_motor/services/storage_service.dart';
 import 'package:raffli_motor/services/auth_service.dart';
 import 'package:raffli_motor/widgets/custom_snackbar.dart';
-import 'package:raffli_motor/widgets/searchable_dropdown.dart';
 import 'package:raffli_motor/utils/currency_input_formatter.dart';
+import 'package:raffli_motor/widgets/custom_app_bar_content.dart';
+import 'package:raffli_motor/widgets/custom_text_field.dart';
+import 'package:raffli_motor/widgets/image_picker_widget.dart';
+import 'package:raffli_motor/widgets/primary_button.dart';
+import 'package:raffli_motor/widgets/category_dropdown.dart';
+import 'package:raffli_motor/widgets/vehicle_type_dropdown.dart';
+import 'package:raffli_motor/widgets/image_source_dialog.dart';
 
 class EditProductPage extends StatefulWidget {
   final ProductWithStock product;
-  
+
   const EditProductPage({super.key, required this.product});
 
   @override
@@ -27,6 +33,7 @@ class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
+  final _stockController = TextEditingController();
 
   final _databaseService = DatabaseService();
   final _storageService = StorageService();
@@ -47,33 +54,38 @@ class _EditProductPageState extends State<EditProductPage> {
     _validateSession();
     _categoriesFuture = _databaseService.getCategories();
     _vehicleTypesFuture = _databaseService.getVehicleTypes();
-    
-    // Pre-fill form dengan data product yang ada
+
+    // Pre-fill form
     _nameController.text = widget.product.name;
-    _priceController.text = widget.product.price.toString();
+    _priceController.text = NumberFormat.currency(
+      locale: 'id',
+      symbol: '',
+      decimalDigits: 0,
+    ).format(widget.product.price);
+    _stockController.text = widget.product.stock.toString();
     _existingImageUrl = widget.product.image;
-    
-    // Load kategori dan vehicle type untuk pre-select
+
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
     final categories = await _categoriesFuture;
     final vehicleTypes = await _vehicleTypesFuture;
-    
-    setState(() {
-      _selectedCategory = categories.firstWhere(
-        (c) => c.name == widget.product.category,
-        orElse: () => categories.first,
-      );
-      _selectedVehicleType = vehicleTypes.firstWhere(
-        (v) => v.name == widget.product.vehicleType,
-        orElse: () => vehicleTypes.first,
-      );
-    });
+
+    if (mounted) {
+      setState(() {
+        _selectedCategory = categories.firstWhere(
+          (c) => c.name == widget.product.category,
+          orElse: () => categories.first,
+        );
+        _selectedVehicleType = vehicleTypes.firstWhere(
+          (v) => v.name == widget.product.vehicleType,
+          orElse: () => vehicleTypes.first,
+        );
+      });
+    }
   }
 
-  // Middleware validation
   Future<void> _validateSession() async {
     final isValid = await _authService.validateSession();
     if (!isValid && mounted) {
@@ -85,6 +97,7 @@ class _EditProductPageState extends State<EditProductPage> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _stockController.dispose();
     super.dispose();
   }
 
@@ -92,19 +105,7 @@ class _EditProductPageState extends State<EditProductPage> {
     final ImagePicker picker = ImagePicker();
     final source = await showDialog<ImageSource>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pilih Sumber Gambar'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, ImageSource.camera),
-            child: const Text('Kamera'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, ImageSource.gallery),
-            child: const Text('Galeri'),
-          ),
-        ],
-      ),
+      builder: (context) => const ImageSourceDialog(),
     );
 
     if (source != null) {
@@ -112,45 +113,28 @@ class _EditProductPageState extends State<EditProductPage> {
 
       if (pickedFile != null) {
         final File file = File(pickedFile.path);
+        // Basic validations
         final fileSize = await file.length();
         const maxFileSize = 5 * 1024 * 1024; // 5MB
-
-        // Validate file type
         final String fileExtension = pickedFile.name
             .split('.')
             .last
             .toLowerCase();
+
         if (!['jpg', 'jpeg', 'png'].contains(fileExtension)) {
-          if (mounted) {
-            CustomSnackBar.showError(
-              context,
-              'Format file tidak didukung! Hanya JPG dan PNG.',
-            );
-          }
+          if (mounted) CustomSnackBar.showError(context, 'Hanya JPG dan PNG.');
           return;
         }
-
-        // Validate file size
         if (fileSize > maxFileSize) {
-          if (mounted) {
-            CustomSnackBar.showError(
-              context,
-              'Ukuran file terlalu besar! Maksimal 5MB.',
-            );
-          }
+          if (mounted) CustomSnackBar.showError(context, 'Maksimal 5MB.');
           return;
         }
 
-        // Validate image orientation (landscape)
         final imageBytes = await file.readAsBytes();
         final ui.Image image = await decodeImageFromList(imageBytes);
-
         if (image.width < image.height) {
           if (mounted) {
-            CustomSnackBar.showError(
-              context,
-              'Gambar harus landscape (lebar lebih besar dari tinggi).',
-            );
+            CustomSnackBar.showError(context, 'Gambar harus landscape.');
           }
           return;
         }
@@ -170,13 +154,15 @@ class _EditProductPageState extends State<EditProductPage> {
 
       try {
         String? imageUrl = _existingImageUrl;
-        
-        // Upload gambar baru jika ada
+
         if (_imageFile != null) {
-          // Hapus gambar lama jika ada
           if (_existingImageUrl != null) {
             try {
-              await _storageService.deleteImage(_existingImageUrl!);
+              // Extract filename from URL for deletion
+              // URLs are like: https://.../productimage_bucket/123.webp
+              final uri = Uri.parse(_existingImageUrl!);
+              final fileName = uri.pathSegments.last;
+              await _storageService.deleteImage(fileName);
             } catch (e) {
               debugPrint('Error deleting old image: $e');
             }
@@ -184,6 +170,7 @@ class _EditProductPageState extends State<EditProductPage> {
           imageUrl = await _storageService.uploadImage(_imageFile!);
         }
 
+        // Update Product Details
         await _databaseService.updateProduct(
           productId: widget.product.id,
           name: _nameController.text,
@@ -193,18 +180,29 @@ class _EditProductPageState extends State<EditProductPage> {
           imageUrl: imageUrl,
         );
 
+        // Update Stock if changed
+        final newStock = int.parse(_stockController.text);
+        final oldStock = widget.product.stock;
+        final diff = newStock - oldStock;
+
+        if (diff != 0) {
+          await _databaseService.addStock(widget.product.id, diff);
+        }
+
         if (mounted) {
           CustomSnackBar.showSuccess(context, 'Produk berhasil diperbarui!');
-          Navigator.of(context).pop(true); // Return true untuk refresh list
+          Navigator.of(context).pop(true);
         }
       } catch (e) {
         if (mounted) {
           CustomSnackBar.showError(context, 'Gagal memperbarui produk: $e');
         }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -212,231 +210,125 @@ class _EditProductPageState extends State<EditProductPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFDA1818),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.only(
-              top: 16,
-              bottom: 20,
-              left: 16,
-              right: 16,
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(
-                      LucideIcons.arrowLeft,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  const Text(
-                    'Edit Produk',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      backgroundColor: Colors.grey[50], // Match AddProductPage background
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(80),
+        child: CustomAppBarContent(title: 'Edit Produk'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0), // Match AddProductPage padding
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
+              // Image Upload Section
+              ImagePickerWidget(
+                imageFile: _imageFile,
+                existingImageUrl: _existingImageUrl,
+                onTap: _pickImage,
+              ),
+              const SizedBox(height: 20),
+
+              // Name
+              CustomTextField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Produk',
-                  hintText: 'Contoh: Laptop ASUS ROG',
-                  border: OutlineInputBorder(),
-                ),
+                label: 'Nama Barang',
+                hintText: 'Oli',
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Nama produk tidak boleh kosong';
+                    return 'Nama barang tidak boleh kosong';
                   }
                   if (value.length < 3) {
-                    return 'Nama produk minimal 3 karakter';
-                  }
-                  if (value.length > 255) {
-                    return 'Nama produk maksimal 255 karakter';
+                    return 'Minimal 3 karakter';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
+
+              // Stock
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Stok Saat Ini',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D3748),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Text(
+                      '${widget.product.stock} pcs',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D3748),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Price
+              CustomTextField(
                 controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Harga Beli per Pcs',
-                  hintText: '0',
-                  prefixText: 'Rp ',
-                  border: OutlineInputBorder(),
-                ),
+                label: 'Harga Beli per Pcs',
+                hintText: 'Rp. -',
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Harga tidak boleh kosong';
-                  }
-                  final price = int.tryParse(value.replaceAll('.', ''));
-                  if (price == null || price < 0) {
-                    return 'Harga tidak valid';
-                  }
-                  if (price > 999999999999) {
-                    return 'Harga terlalu besar';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Harga tidak boleh kosong'
+                    : null,
               ),
               const SizedBox(height: 16),
-              SearchableDropdown<Category>(
-                future: _categoriesFuture,
-                hintText: "Pilih Kategori",
-                labelText: 'Kategori',
-                initialSelection: _selectedCategory,
+
+              // Category
+              CategoryDropdown(
+                categoriesFuture: _categoriesFuture,
+                selectedCategory: _selectedCategory,
                 onSelected: (Category? category) {
                   setState(() {
                     _selectedCategory = category;
                   });
                 },
-                itemAsString: (Category category) => category.name,
-                validator: (value) {
-                  if (value == null) {
-                    return 'Kategori tidak boleh kosong';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
-              SearchableDropdown<VehicleType>(
-                future: _vehicleTypesFuture,
-                hintText: "Pilih Tipe Kendaraan",
-                labelText: 'Tipe Kendaraan',
-                initialSelection: _selectedVehicleType,
+
+              // Vehicle Type
+              VehicleTypeDropdown(
+                vehicleTypesFuture: _vehicleTypesFuture,
+                selectedVehicleType: _selectedVehicleType,
                 onSelected: (VehicleType? vehicleType) {
                   setState(() {
                     _selectedVehicleType = vehicleType;
                   });
                 },
-                itemAsString: (VehicleType vehicleType) => vehicleType.name,
-                validator: (value) {
-                  if (value == null) {
-                    return 'Tipe Kendaraan tidak boleh kosong';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Gambar Produk (wajib gambar landscape, maks 5MB, JPG/PNG)',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(LucideIcons.image),
-                      label: const Text('Ketuk untuk upload foto'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  if (_imageFile != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(_imageFile!.path),
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else if (_existingImageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        _storageService.getPublicUrl(_existingImageUrl!),
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 80,
-                            height: 80,
-                            color: Colors.grey[300],
-                            child: const Icon(LucideIcons.image, color: Colors.grey),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(LucideIcons.info, color: Colors.blue[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Stok tidak dapat diubah di sini. Gunakan halaman Stock untuk mengelola stok produk.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue[900],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _updateProduct,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDA1818),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Perbarui Produk',
-                        style: TextStyle(color: Colors.white),
-                      ),
+
+              // Submit Button
+              PrimaryButton(
+                onPressed: _updateProduct,
+                text: 'Perbarui Produk',
+                isLoading: _isLoading,
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
