@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/product_with_stock.dart';
+import '../models/sale.dart';
 import '../widgets/bottom_navbar.dart';
 import '../widgets/low_stock_alert.dart';
 import '../widgets/sales_type_sheet.dart';
+import '../widgets/weekly_sales_chart.dart';
+import '../widgets/daily_sales_list.dart';
 import 'stock_page.dart'; // ✅ import halaman inventory
+import 'profile_page.dart'; // ✅ import halaman profile
+import 'history_page.dart'; // ✅ import halaman history
 
 class DashboardPage extends StatefulWidget {
   final String username;
@@ -23,10 +28,17 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isLoadingStock = true;
   static const int _minStockThreshold = 3;
 
+  // Sales data
+  List<Map<String, dynamic>> _weeklySalesData = [];
+  List<Sale> _todaySales = [];
+  double _monthlyRevenue = 0;
+  bool _isLoadingSales = true;
+
   @override
   void initState() {
     super.initState();
     _checkLowStock();
+    _loadSalesData();
   }
 
   Future<void> _checkLowStock() async {
@@ -34,191 +46,216 @@ class _DashboardPageState extends State<DashboardPage> {
       _isLoadingStock = true;
     });
 
-    final products = await _databaseService.getProductsWithStock();
-    final lowStock = products
-        .where((product) => product.stock <= _minStockThreshold)
-        .toList();
-
-    setState(() {
-      _lowStockProducts = lowStock;
-      _isLoadingStock = false;
-    });
-  }
-
-  void _onItemTapped(int index) async {
-    if (index == 3) {
-      // 🔴 Tombol logout - invalidate session di server juga
-      final authService = AuthService();
-      await authService.logout();
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-    } else if (index == 2) {
-      // 📦 Tombol inventory
-      final result = await Navigator.of(context).push(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const StockPage(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.ease;
-            var tween = Tween(
-              begin: begin,
-              end: end,
-            ).chain(CurveTween(curve: curve));
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: child,
-            );
-          },
-        ),
+    try {
+      final lowStock = await _databaseService.getLowStockProducts(
+        threshold: _minStockThreshold,
       );
-      // Refresh low stock alert ketika kembali dari stock page
-      if (result == true || result == null) {
-        _checkLowStock();
-      }
-    } else {
+
       setState(() {
-        _selectedIndex = index;
+        _lowStockProducts = lowStock;
+        _isLoadingStock = false;
+      });
+    } catch (e) {
+      debugPrint('Error checking low stock: $e');
+      setState(() {
+        _isLoadingStock = false;
       });
     }
+  }
+
+  Future<void> _loadSalesData() async {
+    setState(() {
+      _isLoadingSales = true;
+    });
+
+    try {
+      final now = DateTime.now();
+      final weeklySales = await _databaseService.getWeeklySales();
+      final todaySales = await _databaseService.getTodaySales();
+      final monthlyRevenue = await _databaseService.getMonthlyRevenue(
+        year: now.year,
+        month: now.month,
+      );
+
+      setState(() {
+        _weeklySalesData = weeklySales;
+        _todaySales = todaySales;
+        _monthlyRevenue = monthlyRevenue;
+        _isLoadingSales = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading sales data: $e');
+      setState(() {
+        _isLoadingSales = false;
+      });
+    }
+  }
+
+  void _onItemTapped(int index) {
+    if (index == 2) {
+      // Refresh low stock alert when switching to stock page
+      _checkLowStock();
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       // Dashboard content
-      Column(
-        children: [
-          // 🔹 Header bagian atas
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(
-              top: 60,
-              left: 20,
-              right: 20,
-              bottom: 25,
-            ),
-            decoration: const BoxDecoration(
-              color: Color(0xFFDA1818),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
+      SingleChildScrollView(
+        child: Column(
+          children: [
+            // 🔹 Header bagian atas
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(
+                top: 60,
+                left: 20,
+                right: 20,
+                bottom: 25,
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🔸 Bagian atas (avatar dan notifikasi)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const CircleAvatar(
-                          backgroundImage: AssetImage('assets/profile.jpg'),
-                          radius: 25,
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Hello, ${widget.username}",
+              decoration: const BoxDecoration(
+                color: Color(0xFFDA1818),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔸 Bagian atas (avatar dan notifikasi)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundImage: AssetImage('assets/profile.jpg'),
+                            radius: 25,
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Hello, ${widget.username}",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text(
+                                "Owner",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      // Notification badge with count
+                      Stack(
+                        children: [
+                          const Icon(
+                            LucideIcons.bell,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          if (_lowStockProducts.isNotEmpty && !_isLoadingStock)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  '${_lowStockProducts.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 25),
+                  // 🔸 Summary Monthly
+                      const Text(
+                        "Summary Monthly",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 5),
+                      _isLoadingSales
+                          ? const SizedBox(
+                              height: 30,
+                          child: Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Text(
+                              NumberFormat.currency(
+                                locale: 'id_ID',
+                                symbol: 'Rp. ',
+                                decimalDigits: 0,
+                              ).format(_monthlyRevenue),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 26,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const Text(
-                              "Owner",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    // Notification badge with count
-                    Stack(
-                      children: [
-                        const Icon(
-                          LucideIcons.bell,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        if (_lowStockProducts.isNotEmpty && !_isLoadingStock)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 18,
-                                minHeight: 18,
-                              ),
-                              child: Text(
-                                '${_lowStockProducts.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
-                // 🔸 Summary Monthly
-                const Text(
-                  "Summary Monthly",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  "Rp. 1.000.000",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          // 🔹 Low Stock Alert
-          if (!_isLoadingStock)
-            LowStockAlert(
-              lowStockProducts: _lowStockProducts,
-              onRefresh: _checkLowStock,
-              onViewStock: () => _onItemTapped(2),
-            ),
-          // 🔹 Isi halaman
-          Expanded(
-            child: Center(
-              child: Text(
-                "Content Area",
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-            ),
-          ),
-        ],
+                // 🔹 Low Stock Alert
+                if (!_isLoadingStock)
+                  LowStockAlert(
+                    lowStockProducts: _lowStockProducts,
+                    onRefresh: _checkLowStock,
+                    onViewStock: () => _onItemTapped(2),
+                  ),
+                // 🔹 Weekly Sales Chart
+            if (!_isLoadingSales) WeeklySalesChart(salesData: _weeklySalesData),
+                // 🔹 Daily Sales List
+                if (!_isLoadingSales) DailySalesList(sales: _todaySales),
+                // Spacer
+                const SizedBox(height: 20),
+          ],
+        ),
       ),
-      // History page (bisa diganti sesuai kebutuhan)
-      const Center(child: Text("History Page")),
-      Container(), // Placeholder untuk inventory, sudah di-handle navigator
+      // History page
+      const HistoryPage(),
+      // Inventory Page
+      const StockPage(),
+      // Profile Page
+      ProfilePage(username: widget.username),
     ];
 
     return BottomNavbar(
@@ -248,12 +285,12 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         CustomBottomNavItem(
           icon: LucideIcons.box,
-          isSelected: false, // Tidak perlu ubah state karena pindah halaman
-          onTap: () => _onItemTapped(2),
+          isSelected: false, // Never selected since it navigates away
+          onTap: () => Navigator.pushNamed(context, '/inventory'),
         ),
         CustomBottomNavItem(
-          icon: LucideIcons.logOut,
-          isSelected: false,
+          icon: LucideIcons.user,
+          isSelected: _selectedIndex == 3,
           onTap: () => _onItemTapped(3),
         ),
       ],

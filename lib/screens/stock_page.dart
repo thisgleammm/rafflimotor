@@ -9,7 +9,8 @@ import 'package:raffli_motor/services/auth_service.dart';
 import 'package:raffli_motor/widgets/custom_snackbar.dart';
 import 'package:raffli_motor/widgets/product_grid.dart';
 import 'package:raffli_motor/widgets/vehicle_type_filter.dart';
-import 'package:raffli_motor/widgets/product_card.dart'; // Ensure ProductCard is imported
+import 'package:raffli_motor/widgets/product_card.dart';
+import 'package:raffli_motor/widgets/add_stock_dialog.dart';
 
 class StockPage extends StatefulWidget {
   const StockPage({super.key});
@@ -28,16 +29,34 @@ class _StockPageState extends State<StockPage> {
   List<ProductWithStock> _inventoryItems = [];
   bool _isLoading = false;
 
+  // Pagination state
+  final ScrollController _scrollController = ScrollController();
+  int _page = 0;
+  final int _limit = 10;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _validateSessionAndRefresh();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _fetchMore();
+    }
   }
 
   // Middleware validation: Cek session sebelum load data
@@ -55,16 +74,54 @@ class _StockPageState extends State<StockPage> {
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
 
     final items = await _databaseService.getProductsWithStock();
 
+    if (!mounted) return;
     setState(() {
       _inventoryItems = items;
       _isLoading = false;
     });
+  }
+
+  Future<void> _fetchMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final nextPage = _page + 1;
+      final items = await _databaseService.getProductsWithStock(
+        limit: _limit,
+        offset: nextPage * _limit,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (items.isEmpty) {
+          _hasMore = false;
+        } else {
+          _inventoryItems.addAll(items);
+          _page = nextPage;
+          if (items.length < _limit) {
+            _hasMore = false;
+          }
+        }
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
   }
 
   Future<void> _deleteProduct(int productId, String? imageUrl) async {
@@ -92,6 +149,30 @@ class _StockPageState extends State<StockPage> {
     }
   }
 
+  Future<void> _addStock(ProductWithStock product) async {
+    final quantity = await showDialog<int>(
+      context: context,
+      builder: (context) => AddStockDialog(productName: product.name),
+    );
+
+    if (quantity != null && quantity > 0) {
+      try {
+        await _databaseService.addStock(product.id, quantity);
+        if (mounted) {
+          CustomSnackBar.showSuccess(
+            context,
+            'Berhasil menambah stok ${product.name}',
+          );
+        }
+        _refresh();
+      } catch (e) {
+        if (mounted) {
+          CustomSnackBar.showError(context, 'Gagal menambah stok: $e');
+        }
+      }
+    }
+  }
+
   List<ProductWithStock> get _filteredItems {
     return _inventoryItems.where((item) {
       final matchesSearch =
@@ -110,115 +191,118 @@ class _StockPageState extends State<StockPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Color(0xFFDA1818),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.only(
-              top: 16,
-              bottom: 20,
-              left: 16,
-              right: 16,
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(
-                      LucideIcons.arrowLeft,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  const Text(
-                    'Stok Barang',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+      body: RefreshIndicator(
+        color: const Color(0xFFDA1818),
+        backgroundColor: Colors.white,
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              floating: true,
+              pinned: true,
+              snap: true,
+              backgroundColor: const Color(0xFFDA1818),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
               ),
-            ),
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Cari barang',
-                          prefixIcon: const Icon(LucideIcons.search),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: const BorderSide(
-                              color: Colors.grey,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Jelajahi Stok Barang',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      VehicleTypeFilter(
-                        selectedVehicleType: _selectedVehicleType,
-                        onSelect: (type) {
-                          setState(() {
-                            _selectedVehicleType = type;
-                          });
-                        },
-                      ),
-                    ],
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(30),
+                ),
+              ),
+              expandedHeight: 80, // Reduced height for cleaner look
+              flexibleSpace: FlexibleSpaceBar(
+                centerTitle: true, // Center title for better balance
+                titlePadding: const EdgeInsets.only(bottom: 20),
+                title: const Text(
+                  'Stok Barang',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18, // Slightly smaller for dense feel
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              _isLoading
-                  ? const _LoadingProductGrid()
-                  : ProductGrid(
-                      items: _filteredItems,
-                      onDelete: _deleteProduct,
-                      onEdit: _editProduct,
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari barang...',
+                        prefixIcon: const Icon(LucideIcons.search),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12, // More comfortable touch target
+                          horizontal: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide:
+                              BorderSide.none, // Cleaner look without border
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFDA1818),
+                            width: 1.5,
+                          ),
+                        ),
+                        // Add shadow for depth
+                      ),
+                      onChanged: (_) => setState(() {}),
                     ),
-            ],
-          ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Jelajahi Stok',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2D3748),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    VehicleTypeFilter(
+                      selectedVehicleType: _selectedVehicleType,
+                      onSelect: (type) {
+                        setState(() {
+                          _selectedVehicleType = type;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            _isLoading
+                ? const _LoadingProductGrid()
+                : ProductGrid(
+                    items: _filteredItems,
+                    onDelete: _deleteProduct,
+                    onEdit: _editProduct,
+                    onAddStock: _addStock,
+                  ),
+            if (_isLoadingMore)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            // Add padding at bottom to avoid FAB overlap
+            const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(

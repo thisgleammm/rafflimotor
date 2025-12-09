@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:raffli_motor/widgets/confirmation_dialog.dart';
 
 class ProductCard extends StatefulWidget {
   final String imageUrl;
@@ -10,6 +11,7 @@ class ProductCard extends StatefulWidget {
   final DateTime? date;
   final VoidCallback onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onAddStock;
   final VoidCallback? onLoad;
   final bool isLoading;
 
@@ -21,6 +23,7 @@ class ProductCard extends StatefulWidget {
     this.date,
     required this.onEdit,
     this.onDelete,
+    this.onAddStock,
     this.onLoad,
   }) : isLoading = false;
 
@@ -31,6 +34,7 @@ class ProductCard extends StatefulWidget {
       date = null,
       onEdit = _emptyOnEdit,
       onDelete = null,
+      onAddStock = null,
       onLoad = null,
       isLoading = true;
 
@@ -148,96 +152,117 @@ class _ProductCardState extends State<ProductCard> {
                       ),
                     ),
                     // Three-dot menu button
-                    PopupMenuButton<String>(
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          LucideIcons.moreVertical,
-                          color: Color(0xFFDA1818),
-                          size: 18,
-                        ),
-                      ),
-                      offset: const Offset(0, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      itemBuilder: (BuildContext context) => [
-                        PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Row(
-                            children: const [
-                              Icon(
-                                LucideIcons.pencil,
-                                size: 18,
-                                color: Color(0xFF2D3748),
-                              ),
-                              SizedBox(width: 12),
-                              Text('Edit Produk'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Row(
-                            children: const [
-                              Icon(
-                                LucideIcons.trash,
-                                size: 18,
-                                color: Color(0xFFDA1818),
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Hapus Produk',
-                                style: TextStyle(color: Color(0xFFDA1818)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (String value) async {
-                        if (value == 'edit') {
-                          widget.onEdit();
-                        } else if (value == 'delete') {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Hapus Produk'),
-                              content: const Text(
-                                'Apakah Anda yakin ingin menghapus produk ini?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: const Text('Batal'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFFDA1818),
-                                  ),
-                                  child: const Text('Hapus'),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {}, // Handled by PopupMenuButton
+                        child: PopupMenuButton<String>(
+                          color: const Color(0xFFDA1818),
+                          padding: EdgeInsets.zero,
+                          icon: Container(
+                            padding: const EdgeInsets.all(
+                              8,
+                            ), // Larger touch target
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                          );
-                          if (confirm == true && widget.onDelete != null) {
-                            widget.onDelete!();
-                          }
-                        }
-                      },
+                            child: const Icon(
+                              LucideIcons.moreVertical,
+                              color: Color(0xFFDA1818),
+                              size: 18,
+                            ),
+                          ),
+                          offset: const Offset(0, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          itemBuilder: (BuildContext context) => [
+                            PopupMenuItem<String>(
+                              value: 'add_stock',
+                              child: Row(
+                                children: const [
+                                  Icon(
+                                    LucideIcons.plus,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Tambah Stok',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'edit',
+                              child: Row(
+                                children: const [
+                                  Icon(
+                                    LucideIcons.pencil,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Edit Produk',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                children: const [
+                                  Icon(
+                                    LucideIcons.trash,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Hapus Produk',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onSelected: (String value) async {
+                            if (value == 'add_stock') {
+                              if (widget.onAddStock != null) {
+                                widget.onAddStock!();
+                              }
+                            } else if (value == 'edit') {
+                              widget.onEdit();
+                            } else if (value == 'delete') {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => ConfirmationDialog(
+                                  title: 'Konfirmasi hapus?',
+                                  content:
+                                      'Apakah Anda yakin ingin menghapus produk ini?',
+                                  confirmText: 'Ya',
+                                  cancelText: 'Tidak',
+                                ),
+                              );
+                              if (confirm == true && widget.onDelete != null) {
+                                widget.onDelete!();
+                              }
+                            }
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),

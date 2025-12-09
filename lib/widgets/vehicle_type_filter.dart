@@ -20,7 +20,14 @@ class VehicleTypeFilter extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
-                onTap: () => onSelect(category),
+                onTap: () {
+                  // Toggle: if already selected, unselect (return to 'All')
+                  if (selectedVehicleType == category) {
+                    onSelect('All');
+                  } else {
+                    onSelect(category);
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
