@@ -61,16 +61,9 @@ class ProfilePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: CircleAvatar(
+                    child: const CircleAvatar(
                       radius: 65,
-                      backgroundColor: const Color(
-                        0xFFDA1818,
-                      ).withValues(alpha: 0.1),
-                      child: const Icon(
-                        LucideIcons.user,
-                        size: 60,
-                        color: Color(0xFFDA1818),
-                      ),
+                      backgroundImage: AssetImage('assets/profile.jpg'),
                     ),
                   ),
                 ),
