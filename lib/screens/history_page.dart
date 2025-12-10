@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/sale.dart';
 import '../models/sale_item.dart';
 import '../services/database_service.dart';
@@ -19,6 +21,9 @@ class _HistoryPageState extends State<HistoryPage> {
   final Map<int, List<SaleItem>> _saleItemsCache = {};
   bool _isLoading = true;
 
+  bool _isCalendarVisible = false;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +40,6 @@ class _HistoryPageState extends State<HistoryPage> {
       month: _selectedMonth.month,
     );
 
-    // Load items for each sale
     _saleItemsCache.clear();
     for (var sale in sales) {
       final items = await _databaseService.getSaleItems(sale.id);
@@ -63,6 +67,14 @@ class _HistoryPageState extends State<HistoryPage> {
     });
     _loadSalesHistory();
   }
+
+  void _toggleCalendar() {
+    setState(() {
+      _isCalendarVisible = !_isCalendarVisible;
+    });
+  }
+
+  // _pickDate is superseded by TableCalendar selection, removing it to avoid confusion
 
   Map<int, List<Sale>> _groupSalesByDate() {
     final grouped = <int, List<Sale>>{};
@@ -114,7 +126,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
             ),
-            // Month selector
+            // Month selector and Calendar
             SliverToBoxAdapter(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -122,27 +134,104 @@ class _HistoryPageState extends State<HistoryPage> {
                   horizontal: 20,
                 ),
                 color: Colors.white,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    IconButton(
-                      onPressed: _previousMonth,
-                      icon: const Icon(LucideIcons.chevronLeft),
-                      color: const Color(0xFF2D3748),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Left side: Current Month Name (e.g., "Januari")
+                        Row(
+                          children: [
+                            Text(
+                              monthName,
+                              style: const TextStyle(
+                                fontSize: 24, // Bigger font as per UI
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2D3748),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_selectedMonth.year}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2D3748),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            // Use next month/prev month for chevron navigation if needed,
+                            // but UI shows just the current month name.
+                            // Keeping chevron as indicator for now.
+                            const Icon(LucideIcons.chevronRight, size: 24),
+                          ],
+                        ),
+
+                        // Right side: Calendar Icon
+                        IconButton(
+                          onPressed: _toggleCalendar,
+                          icon: const Icon(LucideIcons.calendar),
+                          color: const Color(0xFF2D3748),
+                        ),
+                      ],
                     ),
-                    Text(
-                      monthName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3748),
+                    if (_isCalendarVisible) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200], // Gray background as per UI
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: TableCalendar(
+                          firstDay: DateTime.utc(2020, 10, 16),
+                          lastDay: DateTime.utc(2030, 3, 14),
+                          focusedDay: _selectedMonth,
+                          calendarFormat: _calendarFormat,
+                          headerVisible: false, // We use custom header
+                          selectedDayPredicate: (day) {
+                            return isSameDay(_selectedMonth, day);
+                          },
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedMonth = selectedDay;
+                            });
+                            _loadSalesHistory();
+                          },
+                          calendarStyle: CalendarStyle(
+                            selectedDecoration: const BoxDecoration(
+                              color: Color(0xFFDA1818), // Red Color
+                              shape: BoxShape.circle,
+                            ),
+                            todayDecoration: BoxDecoration(
+                              color: const Color(
+                                0xFFDA1818,
+                              ).withValues(alpha: 0.3),
+                              shape: BoxShape.circle,
+                            ),
+                            defaultTextStyle: TextStyle(
+                              color: Colors.grey[800],
+                            ),
+                            weekendTextStyle: const TextStyle(
+                              color: Color(0xFFDA1818),
+                            ), // Red for weekends
+                            outsideDaysVisible: true,
+                            outsideTextStyle: TextStyle(
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          daysOfWeekStyle: const DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            weekendStyle: TextStyle(
+                              color: Color(0xFFDA1818),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: _nextMonth,
-                      icon: const Icon(LucideIcons.chevronRight),
-                      color: const Color(0xFF2D3748),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -204,9 +293,36 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  String _getTransactionTypeLabel(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'sparepart':
+        return 'Sparepart';
+      case 'service':
+        return 'Servis';
+      case 'serviceandspareparт':
+      case 'serviceandsparepart':
+        return 'Servis + Sparepart';
+      default:
+        return type ?? 'Tidak diketahui';
+    }
+  }
+
+  Future<void> _launchReceipt(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch receipt URL')),
+        );
+      }
+    }
+  }
+
   Widget _buildSaleCard(Sale sale) {
     final items = _saleItemsCache[sale.id] ?? [];
-    final timeStr = DateFormat('HH:mm').format(sale.createdAt);
+    // Convert UTC time to local device time
+    final localTime = sale.createdAt.toLocal();
+    final timeStr = DateFormat('HH:mm').format(localTime);
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
@@ -274,7 +390,7 @@ class _HistoryPageState extends State<HistoryPage> {
           if (sale.serviceFee > 0) ...[
             const SizedBox(height: 8),
             const Text(
-              'Add On',
+              'Jenis Transaksi',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -287,7 +403,7 @@ class _HistoryPageState extends State<HistoryPage> {
               children: [
                 Expanded(
                   child: Text(
-                    'Servis ${sale.type}',
+                    _getTransactionTypeLabel(sale.type),
                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
                 ),
@@ -321,6 +437,24 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ],
           ),
+          if (sale.receiptUrl != null && sale.receiptUrl!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _launchReceipt(sale.receiptUrl!),
+                icon: const Icon(LucideIcons.fileText, size: 18),
+                label: const Text('Lihat Nota'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDA1818),
+                  side: const BorderSide(color: Color(0xFFDA1818)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
