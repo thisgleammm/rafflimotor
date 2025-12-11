@@ -5,9 +5,33 @@ import 'package:raffli_motor/models/vehicle_type.dart';
 import 'package:raffli_motor/models/sale.dart';
 import 'package:raffli_motor/models/sale_item.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:raffli_motor/services/auth_service.dart';
 
 class DatabaseService {
   final SupabaseClient _supabaseClient = Supabase.instance.client;
+  final AuthService _authService = AuthService();
+
+  Future<void> logActivity({
+    required String action,
+    required String description,
+  }) async {
+    try {
+      final userMap = await _authService.getCurrentUser();
+      final username = userMap?['username'];
+
+      if (username != null) {
+        await _supabaseClient.from('activity_logs').insert({
+          'username': username,
+          'action': action,
+          'description': description,
+          // 'ip_address': ... (Optional, requires improved device info logic)
+        });
+      }
+    } catch (e) {
+      debugPrint('Error logging activity: $e');
+      // Don't rethrow, logging failure shouldn't stop main flow
+    }
+  }
 
   Future<List<ProductWithStock>> getProductsWithStock({
     int limit = 10,
@@ -83,6 +107,11 @@ class DatabaseService {
         'delete_product',
         params: {'p_product_id': productId},
       );
+
+      await logActivity(
+        action: 'DELETE_PRODUCT',
+        description: 'Deleted product ID: $productId',
+      );
     } catch (e) {
       debugPrint('Error deleting product: $e');
       rethrow;
@@ -129,9 +158,33 @@ class DatabaseService {
           .from('products')
           .update({'updated_at': DateTime.now().toIso8601String()})
           .eq('id', productId);
+
+      await logActivity(
+        action: 'ADD_STOCK',
+        description: 'Added $quantity stock to product ID: $productId',
+      );
     } catch (e) {
       debugPrint('Error adding stock: $e');
       rethrow;
+    }
+  }
+
+  Future<String?> uploadReceipt(String path, Uint8List fileBytes) async {
+    try {
+      await _supabaseClient.storage
+          .from('receipts')
+          .uploadBinary(
+            path,
+            fileBytes,
+            fileOptions: const FileOptions(
+              contentType: 'application/pdf',
+              upsert: true,
+            ),
+          );
+      return _supabaseClient.storage.from('receipts').getPublicUrl(path);
+    } catch (e) {
+      debugPrint('Error uploading receipt: $e');
+      return null;
     }
   }
 
@@ -140,8 +193,28 @@ class DatabaseService {
     required String type,
     required double serviceFee,
     required List<Map<String, dynamic>> items,
+    String? receiptUrl,
+    String? paymentMethod,
   }) async {
     try {
+      final authService = AuthService();
+      final userMap = await authService.getCurrentUser();
+      final username = userMap?['username'];
+
+      if (username == null) {
+        throw Exception('User authentication required to create sale');
+      }
+
+      // Calculate total price
+      int totalItemsPrice = 0;
+      for (var item in items) {
+        final quantity = (item['quantity'] as num).toInt();
+        final price = (item['price'] as num).toInt();
+        totalItemsPrice += quantity * price;
+      }
+
+      final totalPrice = serviceFee.toInt() + totalItemsPrice;
+
       // 2. Insert into sales table
       final saleResponse = await _supabaseClient
           .from('sales')
@@ -150,6 +223,11 @@ class DatabaseService {
             'type': type,
             'service_fee': serviceFee
                 .toInt(), // Convert to int for bigint column
+            'total_amount':
+                totalPrice, // Use total_amount as per database schema
+            'receipt_url': receiptUrl,
+            'user': username,
+            'payment_method': paymentMethod, // Add payment method
           })
           .select()
           .single();
@@ -158,17 +236,22 @@ class DatabaseService {
 
       // 3. Insert into sale_items table and update stock
       for (var item in items) {
+        final quantity = (item['quantity'] as num).toInt();
+        final price = (item['price'] as num).toInt();
+        final subtotal = quantity * price;
+
         await _supabaseClient.from('sales_details').insert({
           'sale_id': saleId,
           'product_id': item['product_id'],
-          'quantity': item['quantity'],
-          'price': item['price'],
+          'quantity': quantity,
+          'price_at_sale': price, // Correct column name
+          'subtotal': subtotal, // Required column
         });
 
         // 4. Update stock via stock_movements
         await _supabaseClient.from('stock_movements').insert({
           'product_id': item['product_id'],
-          'quantity_change': -item['quantity'], // Negative for sales
+          'quantity_change': -quantity, // Negative for sales
           'type': 'sale',
         });
       }
@@ -213,6 +296,9 @@ class DatabaseService {
         return SaleItem.fromMap({
           ...item,
           'product_name': item['products']['name'],
+          // 'price' key might still be expected if not fully refactored,
+          // but we updated SaleItem to look for 'price_at_sale'.
+          // To be safe, let's ensure passed map has what SaleItem needs.
         });
       }).toList();
     } catch (e) {
@@ -242,47 +328,18 @@ class DatabaseService {
     }
   }
 
-  // Get weekly sales data (last 7 days)
+  // Get weekly sales data (last 7 days) - Revenue
   Future<List<Map<String, dynamic>>> getWeeklySales() async {
     try {
-      final now = DateTime.now();
-      final startDate = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 6));
-      final endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final response = await _supabaseClient.rpc('get_weekly_revenue_chart');
 
-      final response = await _supabaseClient
-          .from('sales')
-          .select('created_at, service_fee')
-          .gte('created_at', startDate.toIso8601String())
-          .lte('created_at', endDate.toIso8601String())
-          .order('created_at', ascending: true);
-
-      // Group sales by date
-      final Map<String, int> salesByDate = {};
-
-      // Initialize all 7 days with 0
-      for (int i = 0; i < 7; i++) {
-        final date = startDate.add(Duration(days: i));
-        final dateKey =
-            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-        salesByDate[dateKey] = 0;
-      }
-
-      // Count sales per day
-      for (var sale in response) {
-        final createdAt = DateTime.parse(sale['created_at']);
-        final dateKey =
-            '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}';
-        salesByDate[dateKey] = (salesByDate[dateKey] ?? 0) + 1;
-      }
-
-      // Convert to list format for chart
-      return salesByDate.entries
-          .map((entry) => {'date': entry.key, 'count': entry.value})
-          .toList();
+      return (response as List).map((item) {
+        return {
+          'date': item['date_label'],
+          'count':
+              item['daily_revenue'], // Using 'count' key for compatibility with chart widget logic
+        };
+      }).toList();
     } catch (e) {
       debugPrint('Error getting weekly sales: $e');
       return [];
@@ -316,42 +373,11 @@ class DatabaseService {
     required int month,
   }) async {
     try {
-      final startDate = DateTime(year, month, 1);
-      final endDate = DateTime(year, month + 1, 1);
-
-      final response = await _supabaseClient
-          .from('sales')
-          .select('service_fee')
-          .gte('created_at', startDate.toIso8601String())
-          .lt('created_at', endDate.toIso8601String());
-
-      // Get all sale items for this month to calculate total revenue
-      final salesResponse = await _supabaseClient
-          .from('sales')
-          .select('id')
-          .gte('created_at', startDate.toIso8601String())
-          .lt('created_at', endDate.toIso8601String());
-
-      double totalRevenue = 0;
-
-      // Add service fees
-      for (var sale in response) {
-        totalRevenue += (sale['service_fee'] as num).toDouble();
-      }
-
-      // Add product sales
-      for (var sale in salesResponse) {
-        final saleItems = await _supabaseClient
-            .from('sales_details')
-            .select('quantity, price')
-            .eq('sale_id', sale['id']);
-
-        for (var item in saleItems) {
-          totalRevenue += (item['quantity'] as num) * (item['price'] as num);
-        }
-      }
-
-      return totalRevenue;
+      final response = await _supabaseClient.rpc(
+        'get_monthly_revenue_fixed',
+        params: {'m_year': year, 'm_month': month},
+      );
+      return (response as num).toDouble();
     } catch (e) {
       debugPrint('Error getting monthly revenue: $e');
       return 0;

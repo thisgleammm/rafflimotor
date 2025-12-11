@@ -238,4 +238,6 @@ class AuthService {
       debugPrint('❌ Error invalidating all sessions: $e');
     }
   }
+
+  /// Get current user ID
 }

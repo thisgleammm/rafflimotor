@@ -53,7 +53,8 @@ class DailySalesList extends StatelessWidget {
   }
 
   Widget _buildSaleItem(Sale sale) {
-    final time = DateFormat('HH:mm').format(sale.createdAt);
+    final localTime = sale.createdAt.toLocal();
+    final time = DateFormat('HH:mm').format(localTime);
     final customerName = sale.customerName ?? 'CUSTOMER ${sale.id}';
 
     // Format service fee as currency
@@ -61,7 +62,7 @@ class DailySalesList extends StatelessWidget {
       locale: 'id_ID',
       symbol: 'Rp.',
       decimalDigits: 0,
-    ).format(sale.serviceFee);
+    ).format(sale.totalPrice);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),

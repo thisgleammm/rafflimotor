@@ -22,7 +22,7 @@ class SaleItem {
       productId: map['product_id'] as int,
       productName: map['product_name'] as String? ?? 'Unknown Product',
       quantity: map['quantity'] as int,
-      price: (map['price'] as num).toDouble(),
+      price: (map['price_at_sale'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

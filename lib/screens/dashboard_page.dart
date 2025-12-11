@@ -28,17 +28,28 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isLoadingStock = true;
   static const int _minStockThreshold = 3;
 
-  // Sales data
-  List<Map<String, dynamic>> _weeklySalesData = [];
-  List<Sale> _todaySales = [];
-  double _monthlyRevenue = 0;
-  bool _isLoadingSales = true;
+  // Futures for async loading
+  late Future<List<Map<String, dynamic>>> _weeklySalesFuture;
+  late Future<double> _monthlyRevenueFuture;
+  late Future<List<Sale>> _todaySalesFuture;
 
   @override
   void initState() {
     super.initState();
     _checkLowStock();
-    _loadSalesData();
+    _refreshDashboardData();
+  }
+
+  void _refreshDashboardData() {
+    final now = DateTime.now();
+    setState(() {
+      _weeklySalesFuture = _databaseService.getWeeklySales();
+      _monthlyRevenueFuture = _databaseService.getMonthlyRevenue(
+        year: now.year,
+        month: now.month,
+      );
+      _todaySalesFuture = _databaseService.getTodaySales();
+    });
   }
 
   Future<void> _checkLowStock() async {
@@ -63,36 +74,10 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _loadSalesData() async {
-    setState(() {
-      _isLoadingSales = true;
-    });
-
-    try {
-      final now = DateTime.now();
-      final weeklySales = await _databaseService.getWeeklySales();
-      final todaySales = await _databaseService.getTodaySales();
-      final monthlyRevenue = await _databaseService.getMonthlyRevenue(
-        year: now.year,
-        month: now.month,
-      );
-
-      setState(() {
-        _weeklySalesData = weeklySales;
-        _todaySales = todaySales;
-        _monthlyRevenue = monthlyRevenue;
-        _isLoadingSales = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading sales data: $e');
-      setState(() {
-        _isLoadingSales = false;
-      });
-    }
-  }
-
   void _onItemTapped(int index) {
-    if (index == 2) {
+    if (index == 0) {
+      _refreshDashboardData();
+    } else if (index == 2) {
       // Refresh low stock alert when switching to stock page
       _checkLowStock();
     }
@@ -200,53 +185,91 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   const SizedBox(height: 25),
                   // 🔸 Summary Monthly
-                      const Text(
-                        "Summary Monthly",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 5),
-                      _isLoadingSales
-                          ? const SizedBox(
-                              height: 30,
-                          child: Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Text(
-                              NumberFormat.currency(
-                                locale: 'id_ID',
-                                symbol: 'Rp. ',
-                                decimalDigits: 0,
-                              ).format(_monthlyRevenue),
-                              style: const TextStyle(
+                  const Text(
+                    "Summary Monthly",
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 5),
+                  FutureBuilder<double>(
+                    future: _monthlyRevenueFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const SizedBox(
+                          height: 30,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
                                 color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
+                                strokeWidth: 2,
                               ),
                             ),
-                    ],
+                          ),
+                        );
+                      }
+                      final revenue = snapshot.data ?? 0;
+                      return Text(
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp. ',
+                          decimalDigits: 0,
+                        ).format(revenue),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
                   ),
-                ),
-                // 🔹 Low Stock Alert
-                if (!_isLoadingStock)
-                  LowStockAlert(
-                    lowStockProducts: _lowStockProducts,
-                    onRefresh: _checkLowStock,
-                    onViewStock: () => _onItemTapped(2),
-                  ),
-                // 🔹 Weekly Sales Chart
-            if (!_isLoadingSales) WeeklySalesChart(salesData: _weeklySalesData),
-                // 🔹 Daily Sales List
-                if (!_isLoadingSales) DailySalesList(sales: _todaySales),
-                // Spacer
-                const SizedBox(height: 20),
+                ],
+              ),
+            ),
+            // 🔹 Low Stock Alert
+            if (!_isLoadingStock)
+              LowStockAlert(
+                lowStockProducts: _lowStockProducts,
+                onRefresh: _checkLowStock,
+                onViewStock: () => _onItemTapped(2),
+              ),
+            // 🔹 Weekly Sales Chart
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _weeklySalesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data!.isEmpty) {
+                  // Fallback or empty chart logic if needed,
+                  // but WeeklySalesChart might handle empty lists.
+                  // Let's assume it handles it or we pass empty.
+                  return WeeklySalesChart(salesData: snapshot.data ?? []);
+                }
+                return WeeklySalesChart(salesData: snapshot.data!);
+              },
+            ),
+            // 🔹 Daily Sales List
+            FutureBuilder<List<Sale>>(
+              future: _todaySalesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                return DailySalesList(sales: snapshot.data ?? []);
+              },
+            ),
+            // Spacer
+            const SizedBox(height: 20),
           ],
         ),
       ),

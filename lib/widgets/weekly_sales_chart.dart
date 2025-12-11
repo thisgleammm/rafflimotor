@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class WeeklySalesChart extends StatelessWidget {
   final List<Map<String, dynamic>> salesData;
@@ -27,7 +28,7 @@ class WeeklySalesChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Grafik Penjualan Seminggu',
+              'Grafik Pendapatan Seminggu',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -37,7 +38,7 @@ class WeeklySalesChart extends StatelessWidget {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                'Belum ada data penjualan',
+                'Belum ada data pendapatan',
                 style: TextStyle(color: Colors.grey[400], fontSize: 14),
               ),
             ),
@@ -46,11 +47,13 @@ class WeeklySalesChart extends StatelessWidget {
       );
     }
 
-    // Find max value for Y axis
-    final maxCount = salesData
-        .map((e) => e['count'] as int)
+    // Find max value for Y axis (adjust for currency scale if needed, e.g. millions)
+    final maxVal = salesData
+        .map((e) => (e['count'] as num).toDouble())
         .reduce((a, b) => a > b ? a : b);
-    final yAxisMax = (maxCount + 5).toDouble();
+
+    // Add 20% padding to top
+    final yAxisMax = maxVal * 1.2;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -70,7 +73,7 @@ class WeeklySalesChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Grafik Penjualan Seminggu',
+            'Grafik Pendapatan Seminggu',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -85,7 +88,7 @@ class WeeklySalesChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 5,
+                  horizontalInterval: yAxisMax / 5, // 5 grid lines
                   getDrawingHorizontalLine: (value) {
                     return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
                   },
@@ -124,15 +127,24 @@ class WeeklySalesChart extends StatelessWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 5,
-                      reservedSize: 30,
+                      reservedSize: 40,
+                      interval: yAxisMax / 5,
                       getTitlesWidget: (double value, TitleMeta meta) {
+                        // Abbreviate large numbers (e.g. 1.5M, 100K)
+                        if (value >= 1000000) {
+                          return Text(
+                            '${(value / 1000000).toStringAsFixed(1)}jt',
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        } else if (value >= 1000) {
+                          return Text(
+                            '${(value / 1000).toStringAsFixed(0)}rb',
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        }
                         return Text(
                           value.toInt().toString(),
-                          style: const TextStyle(
-                            color: Color(0xFF2D3748),
-                            fontSize: 12,
-                          ),
+                          style: const TextStyle(fontSize: 10),
                         );
                       },
                     ),
@@ -148,10 +160,10 @@ class WeeklySalesChart extends StatelessWidget {
                     spots: salesData.asMap().entries.map((entry) {
                       return FlSpot(
                         entry.key.toDouble(),
-                        (entry.value['count'] as int).toDouble(),
+                        (entry.value['count'] as num).toDouble(),
                       );
                     }).toList(),
-                    isCurved: false,
+                    isCurved: true, // Make it curved for better look
                     color: const Color(0xFFDA1818),
                     barWidth: 3,
                     isStrokeCapRound: true,
@@ -166,7 +178,10 @@ class WeeklySalesChart extends StatelessWidget {
                         );
                       },
                     ),
-                    belowBarData: BarAreaData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(0xFFDA1818).withValues(alpha: 0.1),
+                    ),
                   ),
                 ],
                 lineTouchData: LineTouchData(
@@ -175,8 +190,15 @@ class WeeklySalesChart extends StatelessWidget {
                     getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                       return touchedBarSpots.map((barSpot) {
                         final index = barSpot.x.toInt();
+                        final val = barSpot.y;
+                        final formattedVal = NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp ',
+                          decimalDigits: 0,
+                        ).format(val);
+
                         return LineTooltipItem(
-                          '${salesData[index]['date']}\n${barSpot.y.toInt()} penjualan',
+                          '${salesData[index]['date']}\n$formattedVal',
                           const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
