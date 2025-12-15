@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
-      return errorResponse("Failed to upload receipt", 500);
+      return errorResponse(`Failed to upload receipt: ${uploadError.message}`, 500);
     }
 
     // Get public URL

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
-      return errorResponse("Failed to upload image", 500);
+      return errorResponse(`Failed to upload image: ${uploadError.message}`, 500);
     }
 
     // Get public URL

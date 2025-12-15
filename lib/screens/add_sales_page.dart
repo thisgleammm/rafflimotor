@@ -403,7 +403,7 @@ class _AddSalesPageState extends State<AddSalesPage> {
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
-                                width: 100,
+                                width: 110,
                                 child: const Text(
                                   'Qty',
                                   style: TextStyle(
@@ -469,7 +469,7 @@ class _AddSalesPageState extends State<AddSalesPage> {
                                 const SizedBox(width: 8),
                                 // Qty Controls
                                 SizedBox(
-                                  width: 100,
+                                  width: 110,
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
