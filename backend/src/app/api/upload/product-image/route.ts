@@ -9,6 +9,9 @@ import {
 
 // POST /api/upload/product-image - Upload product image
 export async function POST(request: NextRequest) {
+  console.log("POST /api/upload/product-image called");
+  console.log("Headers:", Object.fromEntries(request.headers));
+
   const auth = await authenticateRequest(request);
   if (!auth.authenticated) {
     return unauthorizedResponse(auth.error);
