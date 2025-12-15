@@ -189,16 +189,41 @@ class DatabaseService {
       if (response['success'] != true) {
         throw Exception(response['error'] ?? 'Failed to create sale');
       }
+
+      // Invalidate cache for current month so history updates immediately
+      final now = DateTime.now();
+      invalidateSalesCache(now.year, now.month);
     } catch (e) {
       debugPrint('Error creating sale: $e');
       rethrow;
     }
   }
 
+  // Cache for sales history: "year-month" -> List<Sale>
+  final Map<String, List<Sale>> _salesHistoryCache = {};
+  final Map<String, DateTime> _salesHistoryCacheTime = {};
+  static const Duration _cacheDuration = Duration(
+    minutes: 5,
+  ); // Cache for 5 mins
+
   Future<List<Sale>> getSalesHistory({
     required int year,
     required int month,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = '$year-$month';
+
+    // Check cache validity
+    if (!forceRefresh &&
+        _salesHistoryCache.containsKey(cacheKey) &&
+        _salesHistoryCacheTime.containsKey(cacheKey)) {
+      final cacheTime = _salesHistoryCacheTime[cacheKey]!;
+      if (DateTime.now().difference(cacheTime) < _cacheDuration) {
+        debugPrint('Returning cached sales history for $year-$month');
+        return _salesHistoryCache[cacheKey]!;
+      }
+    }
+
     try {
       final response = await _apiService.get(
         '/api/sales',
@@ -211,11 +236,29 @@ class DatabaseService {
       }
 
       final data = response['data'] as List;
-      return data.map((item) => Sale.fromMap(item)).toList();
+      final sales = data.map((item) => Sale.fromMap(item)).toList();
+
+      // Update cache
+      _salesHistoryCache[cacheKey] = sales;
+      _salesHistoryCacheTime[cacheKey] = DateTime.now();
+
+      return sales;
     } catch (e) {
       debugPrint('Error getting sales history: $e');
+      // If error occurs but we have old cache, return it as fallback
+      if (_salesHistoryCache.containsKey(cacheKey)) {
+        debugPrint('Returning stale cache due to error');
+        return _salesHistoryCache[cacheKey]!;
+      }
       return [];
     }
+  }
+
+  /// Clear specific month cache, e.g. when creating a new sale
+  void invalidateSalesCache(int year, int month) {
+    final cacheKey = '$year-$month';
+    _salesHistoryCache.remove(cacheKey);
+    _salesHistoryCacheTime.remove(cacheKey);
   }
 
   Future<List<Sale>> getTodaySales() async {
@@ -328,6 +371,7 @@ class DatabaseService {
         '/api/upload/receipt',
         fileBytes,
         path,
+        mediaType: 'application/pdf',
       );
 
       if (response['success'] != true) {

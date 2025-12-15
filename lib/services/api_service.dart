@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:raffli_motor/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,12 +132,12 @@ class ApiService {
     }
   }
 
-  /// Multipart POST request untuk file upload
   Future<Map<String, dynamic>> uploadFile(
     String endpoint,
     Uint8List fileBytes,
     String fileName, {
     String fieldName = 'file',
+    String? mediaType, // e.g. 'application/pdf' or 'image/jpeg'
     bool withAuth = true,
   }) async {
     try {
@@ -150,8 +151,21 @@ class ApiService {
         }
       }
 
+      MediaType? contentType;
+      if (mediaType != null && mediaType.contains('/')) {
+        final parts = mediaType.split('/');
+        if (parts.length == 2) {
+          contentType = MediaType(parts[0], parts[1]);
+        }
+      }
+
       request.files.add(
-        http.MultipartFile.fromBytes(fieldName, fileBytes, filename: fileName),
+        http.MultipartFile.fromBytes(
+          fieldName,
+          fileBytes,
+          filename: fileName,
+          contentType: contentType,
+        ),
       );
 
       final streamedResponse = await request.send();

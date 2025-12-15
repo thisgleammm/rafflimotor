@@ -26,9 +26,23 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 1);
 
+    // Determine caching strategy
+    const today = new Date();
+    const isCurrentMonth =
+      today.getFullYear() === year && today.getMonth() + 1 === month;
+
+    // Cache-Control headers
+    // Current month: 10s (fresh data)
+    // Past months: 1 hour (historical data rarely changes)
+    const cacheControl = isCurrentMonth
+      ? "public, max-age=10, stale-while-revalidate=60"
+      : "public, max-age=3600, stale-while-revalidate=86400";
+
     const { data, error } = await supabase
       .from("sales")
-      .select("*")
+      .select(
+        "id, customer_name, type, service_fee, total_amount, created_at, receipt_url, payment_method"
+      )
       .gte("created_at", startDate.toISOString())
       .lt("created_at", endDate.toISOString())
       .order("created_at", { ascending: false });
@@ -38,7 +52,13 @@ export async function GET(request: NextRequest) {
       return errorResponse("Failed to get sales history", 500);
     }
 
-    return successResponse(data || []);
+    // Return response with Cache-Control header
+    const response = successResponse(data || []);
+    response.headers.set("Cache-Control", cacheControl);
+    response.headers.set("CDN-Cache-Control", cacheControl);
+    response.headers.set("Vercel-CDN-Cache-Control", cacheControl);
+
+    return response;
   } catch (e) {
     console.error("Get sales history error:", e);
     return errorResponse("Internal server error", 500);

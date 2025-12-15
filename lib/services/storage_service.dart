@@ -24,6 +24,7 @@ class StorageService {
         '/api/upload/product-image',
         webpBytes,
         fileName,
+        mediaType: 'image/webp',
       );
 
       if (response['success'] != true) {
