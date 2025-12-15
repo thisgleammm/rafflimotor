@@ -215,7 +215,11 @@ class _AddSalesPageState extends State<AddSalesPage> {
       final currentQty = _selectedQuantities[product.id] ?? 1;
       final newQty = currentQty + delta;
 
-      if (newQty > 0 && newQty <= product.stock) {
+      if (newQty <= 0) {
+        // Hapus item jika qty menjadi 0 atau kurang
+        _selectedProducts.removeWhere((p) => p.id == product.id);
+        _selectedQuantities.remove(product.id);
+      } else if (newQty <= product.stock) {
         _selectedQuantities[product.id] = newQty;
       }
     });
@@ -307,7 +311,7 @@ class _AddSalesPageState extends State<AddSalesPage> {
 
       if (mounted) {
         CustomSnackBar.showSuccess(context, 'Transaksi berhasil disimpan');
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Return true untuk trigger refresh
       }
     } catch (e) {
       if (mounted) {
@@ -335,8 +339,8 @@ class _AddSalesPageState extends State<AddSalesPage> {
                     16,
                     16,
                     16,
-                    120,
-                  ), // Bottom padding for footer
+                    200,
+                  ), // Bottom padding for footer - increased for better UX
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -374,33 +378,43 @@ class _AddSalesPageState extends State<AddSalesPage> {
 
                       // Daftar Barang (Sparepart)
                       if (widget.type != SalesType.service) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Daftar Barang',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const Row(
-                              children: [
-                                Text(
+                        // Header dengan alignment yang sesuai
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              const Expanded(
+                                flex: 4,
+                                child: Text(
+                                  'Daftar Barang',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 90,
+                                child: Text(
                                   'Harga jual',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                SizedBox(width: 40),
-                                Text(
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 100,
+                                child: const Text(
                                   'Qty',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 10),
 
@@ -410,7 +424,7 @@ class _AddSalesPageState extends State<AddSalesPage> {
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 8,
+                              vertical: 12,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -425,86 +439,83 @@ class _AddSalesPageState extends State<AddSalesPage> {
                             ),
                             child: Row(
                               children: [
+                                // Nama Produk
                                 Expanded(
-                                  flex: 3,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          product.name,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        _currencyFormat
-                                            .format(product.price)
-                                            .replaceAll(
-                                              ',00',
-                                              '',
-                                            ), // Format simplified
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
+                                  flex: 4,
+                                  child: Text(
+                                    product.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                // Harga Jual
+                                SizedBox(
+                                  width: 90,
+                                  child: Text(
+                                    _currencyFormat
+                                        .format(product.price)
+                                        .replaceAll('Rp', '')
+                                        .replaceAll(',00', '')
+                                        .trim(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-
-                                // Horizontal Divider substitute or spacing
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
+                                // Qty Controls
+                                SizedBox(
+                                  width: 100,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      IconButton(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 28,
+                                          minHeight: 28,
+                                        ),
+                                        icon: const Icon(
+                                          LucideIcons.minus,
+                                          size: 16,
+                                        ),
+                                        onPressed: () =>
+                                            _updateQuantity(product, -1),
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: Colors.grey.shade300,
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                        ),
+                                        child: Text(
+                                          '$qty',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
-                                      child: Text(
-                                        _currencyFormat
-                                            .format(product.price)
-                                            .replaceAll(',00', '')
-                                            .replaceAll('Rp', ''),
-                                        style: const TextStyle(fontSize: 13),
+                                      IconButton(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 28,
+                                          minHeight: 28,
+                                        ),
+                                        icon: const Icon(
+                                          LucideIcons.plus,
+                                          size: 16,
+                                        ),
+                                        onPressed: qty < product.stock
+                                            ? () => _updateQuantity(product, 1)
+                                            : null,
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    IconButton(
-                                      visualDensity: VisualDensity.compact,
-                                      icon: const Icon(
-                                        LucideIcons.minus,
-                                        size: 16,
-                                      ),
-                                      onPressed: () =>
-                                          _updateQuantity(product, -1),
-                                    ),
-                                    Text(
-                                      '$qty',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      visualDensity: VisualDensity.compact,
-                                      icon: const Icon(
-                                        LucideIcons.plus,
-                                        size: 16,
-                                      ),
-                                      onPressed: qty < product.stock
-                                          ? () => _updateQuantity(product, 1)
-                                          : null,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

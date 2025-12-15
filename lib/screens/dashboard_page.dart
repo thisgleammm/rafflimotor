@@ -87,6 +87,16 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  void _handleSaleCompleted() {
+    // Refresh dashboard data
+    _refreshDashboardData();
+    _checkLowStock();
+
+    // Trigger rebuild untuk refresh HistoryPage
+    // HistoryPage akan reload data di initState saat rebuild
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
@@ -289,7 +299,8 @@ class _DashboardPageState extends State<DashboardPage> {
           showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
-            builder: (context) => const SalesTypeSheet(),
+            builder: (context) =>
+                SalesTypeSheet(onSaleCompleted: _handleSaleCompleted),
           );
         },
         shape: const CircleBorder(),
