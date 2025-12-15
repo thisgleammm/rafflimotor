@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/load_page.dart';
 import 'screens/login_page.dart';
 import 'screens/dashboard_page.dart';
 import 'screens/stock_page.dart';
-import 'supabase_config.dart';
+import 'services/config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,10 +13,8 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  await Supabase.initialize(
-    url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
-  );
+  // Initialize config service (fetch storage URLs from API)
+  await ConfigService().initialize();
 
   runApp(const MyApp());
 }

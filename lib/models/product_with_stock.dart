@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:raffli_motor/services/config_service.dart';
 
 class ProductWithStock {
   final int id;
@@ -34,13 +34,9 @@ class ProductWithStock {
 
       // If it's just a filename (doesn't start with http and not a local path), generate public URL
       if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
-        try {
-          imageUrl = Supabase.instance.client.storage
-              .from('productimage_bucket')
-              .getPublicUrl(imageUrl);
-        } catch (e) {
-          // Fallback or keep original if Supabase is not initialized (e.g. testing)
-        }
+        // Generate storage URL using ConfigService
+        final configService = ConfigService();
+        imageUrl = configService.getProductImageUrl(imageUrl);
       }
     }
 

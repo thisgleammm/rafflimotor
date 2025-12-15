@@ -1,0 +1,602 @@
+{
+	"info": {
+		"_postman_id": "raffli-motor-api",
+		"name": "Raffli Motor API",
+		"description": "REST API untuk aplikasi Raffli Motor - Manajemen bengkel motor",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "session_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data.session_token) {",
+									"    pm.collectionVariables.set('session_token', jsonData.data.session_token);",
+									"    console.log('Session token saved!');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login dengan username dan password. Response akan menyertakan session_token yang disimpan otomatis."
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Session",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/validate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "validate"]
+						},
+						"description": "Validasi session token yang aktif"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						},
+						"description": "Logout dan invalidate session token"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						},
+						"description": "Get list produk dengan pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "1"]
+						},
+						"description": "Get detail produk berdasarkan ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Oli Mesin Honda\",\n    \"price\": 75000,\n    \"category_id\": 1,\n    \"vehicle_type_id\": 1,\n    \"image_url\": null,\n    \"stock\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"]
+						},
+						"description": "Buat produk baru dengan initial stock"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Oli Mesin Honda - Updated\",\n    \"price\": 80000,\n    \"category_id\": 1,\n    \"vehicle_type_id\": 1,\n    \"image_url\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "1"]
+						},
+						"description": "Update data produk"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "1"]
+						},
+						"description": "Hapus produk"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"product_id\": 1,\n    \"quantity\": 5,\n    \"type\": \"manual_add\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products/stock",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "stock"]
+						},
+						"description": "Tambah stock produk"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Sales",
+			"item": [
+				{
+					"name": "Get Sales History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/sales?year=2024&month=12",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sales"],
+							"query": [
+								{
+									"key": "year",
+									"value": "2024"
+								},
+								{
+									"key": "month",
+									"value": "12"
+								}
+							]
+						},
+						"description": "Get history penjualan per bulan"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Today Sales",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/sales/today",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sales", "today"]
+						},
+						"description": "Get penjualan hari ini"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sale Items",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/sales/1/items",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sales", "1", "items"]
+						},
+						"description": "Get detail items dari sebuah transaksi"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Sale",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customer_name\": \"Budi Santoso\",\n    \"type\": \"sparepart\",\n    \"service_fee\": 0,\n    \"payment_method\": \"cash\",\n    \"receipt_url\": null,\n    \"items\": [\n        {\n            \"product_id\": 1,\n            \"quantity\": 2,\n            \"price\": 75000\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/sales",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sales"]
+						},
+						"description": "Buat transaksi penjualan baru"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Master Data",
+			"item": [
+				{
+					"name": "Get Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories",
+							"host": ["{{base_url}}"],
+							"path": ["api", "categories"]
+						},
+						"description": "Get semua kategori produk"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vehicle Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/vehicle-types",
+							"host": ["{{base_url}}"],
+							"path": ["api", "vehicle-types"]
+						},
+						"description": "Get semua tipe kendaraan"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Get Weekly Revenue",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/weekly",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "weekly"]
+						},
+						"description": "Get data chart revenue 7 hari terakhir"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Monthly Revenue",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/monthly?year=2024&month=12",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "monthly"],
+							"query": [
+								{
+									"key": "year",
+									"value": "2024"
+								},
+								{
+									"key": "month",
+									"value": "12"
+								}
+							]
+						},
+						"description": "Get total revenue bulanan"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Low Stock Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/low-stock?limit=5&threshold=3",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "low-stock"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "5"
+								},
+								{
+									"key": "threshold",
+									"value": "3"
+								}
+							]
+						},
+						"description": "Get produk dengan stock rendah"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Upload",
+			"item": [
+				{
+					"name": "Upload Product Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/product-image",
+							"host": ["{{base_url}}"],
+							"path": ["api", "upload", "product-image"]
+						},
+						"description": "Upload gambar produk (jpeg, png, webp)"
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Receipt",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/receipt",
+							"host": ["{{base_url}}"],
+							"path": ["api", "upload", "receipt"]
+						},
+						"description": "Upload receipt PDF"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Storage",
+			"item": [
+				{
+					"name": "Get Public URL",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/storage/url?fileName=test.webp&bucket=productimage_bucket",
+							"host": ["{{base_url}}"],
+							"path": ["api", "storage", "url"],
+							"query": [
+								{
+									"key": "fileName",
+									"value": "test.webp"
+								},
+								{
+									"key": "bucket",
+									"value": "productimage_bucket"
+								}
+							]
+						},
+						"description": "Get public URL untuk file di storage"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete File",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{session_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/storage/test.webp?bucket=productimage_bucket",
+							"host": ["{{base_url}}"],
+							"path": ["api", "storage", "test.webp"],
+							"query": [
+								{
+									"key": "bucket",
+									"value": "productimage_bucket"
+								}
+							]
+						},
+						"description": "Delete file dari storage"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

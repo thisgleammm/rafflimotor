@@ -6,11 +6,83 @@ Dokumentasi lengkap semua function penting dalam aplikasi Raffli Motor.
 
 ## 📚 Table of Contents
 
+- [REST API Backend](#rest-api-backend)
 - [Database Functions (Supabase)](#database-functions-supabase)
 - [Dart Services](#dart-services)
+  - [ApiService](#apiservice)
   - [AuthService](#authservice)
   - [DatabaseService](#databaseservice)
 - [Widgets](#widgets)
+
+---
+
+## REST API Backend
+
+Backend Next.js yang mengganti penggunaan Supabase API langsung.
+
+### Configuration
+
+**Environment Variables (Flutter `.env`):**
+```env
+API_BASE_URL=http://localhost:3000  # Development
+# API_BASE_URL=https://your-app.vercel.app  # Production
+```
+
+### Base URL
+
+| Environment | URL |
+|-------------|-----|
+| Development | `http://localhost:3000` |
+| Production | URL Vercel setelah deploy |
+
+### Authentication
+
+Semua endpoint (kecuali login) memerlukan header:
+```
+Authorization: Bearer <session_token>
+```
+
+### Endpoints Summary
+
+| Category | Endpoint | Method | Description |
+|----------|----------|--------|-------------|
+| **Auth** | `/api/auth/login` | POST | Login |
+| | `/api/auth/logout` | POST | Logout |
+| | `/api/auth/validate` | GET | Validate session |
+| **Products** | `/api/products` | GET | List products |
+| | `/api/products` | POST | Create product |
+| | `/api/products/:id` | GET/PUT/DELETE | CRUD by ID |
+| | `/api/products/stock` | POST | Add stock |
+| **Sales** | `/api/sales` | GET | Sales history |
+| | `/api/sales` | POST | Create sale |
+| | `/api/sales/today` | GET | Today's sales |
+| | `/api/sales/:id/items` | GET | Sale items |
+| **Master** | `/api/categories` | GET | All categories |
+| | `/api/vehicle-types` | GET | All vehicle types |
+| **Dashboard** | `/api/dashboard/weekly` | GET | Weekly revenue |
+| | `/api/dashboard/monthly` | GET | Monthly revenue |
+| | `/api/dashboard/low-stock` | GET | Low stock products |
+| **Upload** | `/api/upload/product-image` | POST | Upload image |
+| | `/api/upload/receipt` | POST | Upload receipt |
+
+### Response Format
+
+**Success:**
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Optional message"
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+```
 
 ---
 
@@ -141,6 +213,66 @@ final revenue = await supabase.rpc('get_monthly_revenue_fixed', params: {
 ---
 
 ## Dart Services
+
+### ApiService
+
+Service dasar untuk komunikasi HTTP dengan REST API backend.
+
+**Location**: `lib/services/api_service.dart`
+
+#### Methods
+
+##### 1. `get(String endpoint, {Map<String, String>? queryParams})`
+**Deskripsi**: HTTP GET request ke API.
+
+**Parameters**:
+- `endpoint` (String) - Path endpoint (e.g., `/api/products`)
+- `queryParams` (Map?) - Query parameters
+
+**Return**: `Future<Map<String, dynamic>>` - Response dari API
+
+**Usage**:
+```dart
+final response = await apiService.get('/api/products', queryParams: {'limit': '10'});
+if (response['success'] == true) {
+  final data = response['data'];
+}
+```
+
+---
+
+##### 2. `post(String endpoint, {Map<String, dynamic>? body})`
+**Deskripsi**: HTTP POST request ke API.
+
+**Parameters**:
+- `endpoint` (String) - Path endpoint
+- `body` (Map?) - Request body (akan di-encode ke JSON)
+
+**Return**: `Future<Map<String, dynamic>>`
+
+---
+
+##### 3. `put(String endpoint, {Map<String, dynamic>? body})`
+**Deskripsi**: HTTP PUT request ke API.
+
+---
+
+##### 4. `delete(String endpoint)`
+**Deskripsi**: HTTP DELETE request ke API.
+
+---
+
+##### 5. `uploadFile(String endpoint, Uint8List fileBytes, String fileName)`
+**Deskripsi**: Upload file dengan multipart request.
+
+**Parameters**:
+- `endpoint` (String) - Upload endpoint
+- `fileBytes` (Uint8List) - File bytes
+- `fileName` (String) - Nama file
+
+**Return**: `Future<Map<String, dynamic>>` - Contains `url` dan `file_name`
+
+---
 
 ### AuthService
 

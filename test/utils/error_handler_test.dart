@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:raffli_motor/utils/error_handler.dart';
 
 void main() {
@@ -14,8 +13,10 @@ void main() {
         final result = ErrorHandler.getReadableError(error);
 
         // Assert
-        expect(result,
-            'Tidak ada koneksi internet. Periksa koneksi Anda dan coba lagi.');
+        expect(
+          result,
+          'Tidak ada koneksi internet. Periksa koneksi Anda dan coba lagi.',
+        );
       });
 
       test('should return format error message for FormatException', () {
@@ -26,8 +27,10 @@ void main() {
         final result = ErrorHandler.getReadableError(error);
 
         // Assert
-        expect(result,
-            'Terjadi kesalahan dalam memproses data. Silakan coba lagi.');
+        expect(
+          result,
+          'Terjadi kesalahan dalam memproses data. Silakan coba lagi.',
+        );
       });
 
       test('should return timeout error message for timeout errors', () {
@@ -38,8 +41,10 @@ void main() {
         final result = ErrorHandler.getReadableError(error);
 
         // Assert
-        expect(result,
-            'Koneksi timeout. Periksa koneksi internet Anda dan coba lagi.');
+        expect(
+          result,
+          'Koneksi timeout. Periksa koneksi internet Anda dan coba lagi.',
+        );
       });
 
       test('should return auth error for unauthorized (401)', () {
@@ -123,19 +128,24 @@ void main() {
       test('should mask sensitive information containing supabase', () {
         // Arrange
         final error = Exception(
-            'Error connecting to supabase.co: connection refused');
+          'Error connecting to supabase.co: connection refused',
+        );
 
         // Act
         final result = ErrorHandler.getReadableError(error);
 
         // Assert
-        expect(result,
-            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.');
+        expect(
+          result,
+          'Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.',
+        );
       });
 
       test('should mask sensitive information containing API keys', () {
         // Arrange
-        final error = Exception('Invalid API key: eyJhbGciOiJIUzI1NiIsInR5cCI6');
+        final error = Exception(
+          'Invalid API key: eyJhbGciOiJIUzI1NiIsInR5cCI6',
+        );
 
         // Act
         final result = ErrorHandler.getReadableError(error);
@@ -153,8 +163,10 @@ void main() {
 
         // Assert
         // 'postgresql' and 'database' are sensitive, but 'connection' triggers network check
-        expect(result,
-            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.');
+        expect(
+          result,
+          'Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.',
+        );
       });
 
       test('should mask sensitive information containing URLs', () {
@@ -176,8 +188,10 @@ void main() {
         final result = ErrorHandler.getReadableError(error);
 
         // Assert
-        expect(result,
-            'Masalah koneksi jaringan. Periksa koneksi internet Anda.');
+        expect(
+          result,
+          'Masalah koneksi jaringan. Periksa koneksi internet Anda.',
+        );
       });
 
       test('should return generic error for unknown errors', () {
@@ -189,51 +203,6 @@ void main() {
 
         // Assert
         expect(result, 'Terjadi kesalahan. Silakan coba lagi.');
-      });
-
-      test('should handle PostgrestException with PGRST116 code', () {
-        // Arrange
-        final error = PostgrestException(
-          message: 'Authentication failed',
-          code: 'PGRST116',
-        );
-
-        // Act
-        final result = ErrorHandler.getReadableError(error);
-
-        // Assert
-        // PostgrestException.toString() contains 'PostgrestException' which has sensitive words
-        expect(result, 'Terjadi kesalahan sistem. Silakan coba lagi nanti.');
-      });
-
-      test('should handle PostgrestException with PGRST301 code', () {
-        // Arrange
-        final error = PostgrestException(
-          message: 'Server error',
-          code: 'PGRST301',
-        );
-
-        // Act
-        final result = ErrorHandler.getReadableError(error);
-
-        // Assert
-        // PostgrestException.toString() contains sensitive info
-        expect(result, 'Terjadi kesalahan sistem. Silakan coba lagi nanti.');
-      });
-
-      test('should handle PostgrestException with unknown code', () {
-        // Arrange
-        final error = PostgrestException(
-          message: 'Unknown error',
-          code: 'PGRST999',
-        );
-
-        // Act
-        final result = ErrorHandler.getReadableError(error);
-
-        // Assert
-        // PostgrestException.toString() contains sensitive info
-        expect(result, 'Terjadi kesalahan sistem. Silakan coba lagi nanti.');
       });
     });
 

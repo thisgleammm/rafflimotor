@@ -4,6 +4,7 @@ Aplikasi manajemen bengkel motor yang membantu Anda mengelola inventori sparepar
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.9.2-blue)
 ![Dart](https://img.shields.io/badge/Dart-3.9.2-blue)
+![Next.js](https://img.shields.io/badge/Next.js-Backend-black)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)
 ![License](https://img.shields.io/badge/License-Private-red)
 
@@ -74,13 +75,13 @@ Aplikasi manajemen bengkel motor yang membantu Anda mengelola inventori sparepar
 - **FL Chart** - Data visualization
 
 ### Backend
-- **Supabase** - Backend as a Service
+- **Next.js** - REST API backend
+- **Supabase** - Backend as a Service (database & storage)
 - **PostgreSQL** - Database
 - **Supabase Storage** - File storage untuk gambar & PDF
-- **Supabase Auth** - Authentication (custom implementation)
 
 ### Libraries
-- `supabase_flutter` - Supabase client
+- `http` - HTTP client untuk REST API
 - `shared_preferences` - Local storage
 - `image_picker` - Image selection
 - `pdf` - PDF generation
@@ -183,17 +184,25 @@ cd ..
 
 ### 1. Create `.env` File
 
-Buat file `.env` di root project:
+Buat file `.env` di root project (Flutter app):
 
 ```env
+# REST API Backend URL
+API_BASE_URL=http://localhost:3000
+```
+
+Buat file `.env.local` di folder `backend/`:
+
+```env
+# Supabase Configuration (untuk backend)
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
 **Cara mendapatkan credentials:**
 1. Buka Supabase Dashboard
 2. Settings → API
-3. Copy **Project URL** dan **anon public** key
+3. Copy **Project URL** dan **service_role** key (BUKAN anon key)
 
 ### 2. Update `pubspec.yaml` (Optional)
 

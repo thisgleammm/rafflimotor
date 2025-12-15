@@ -4,73 +4,33 @@ import 'package:raffli_motor/models/product_with_stock.dart';
 import 'package:raffli_motor/models/vehicle_type.dart';
 import 'package:raffli_motor/models/sale.dart';
 import 'package:raffli_motor/models/sale_item.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:raffli_motor/services/auth_service.dart';
+import 'package:raffli_motor/services/api_service.dart';
 
+/// DatabaseService menggunakan REST API backend
 class DatabaseService {
-  final SupabaseClient _supabaseClient = Supabase.instance.client;
-  final AuthService _authService = AuthService();
+  final ApiService _apiService = ApiService();
 
-  Future<void> logActivity({
-    required String action,
-    required String description,
-  }) async {
-    try {
-      final userMap = await _authService.getCurrentUser();
-      final username = userMap?['username'];
-
-      if (username != null) {
-        await _supabaseClient.from('activity_logs').insert({
-          'username': username,
-          'action': action,
-          'description': description,
-          // 'ip_address': ... (Optional, requires improved device info logic)
-        });
-      }
-    } catch (e) {
-      debugPrint('Error logging activity: $e');
-      // Don't rethrow, logging failure shouldn't stop main flow
-    }
-  }
+  // ==================== PRODUCTS ====================
 
   Future<List<ProductWithStock>> getProductsWithStock({
     int limit = 10,
     int offset = 0,
   }) async {
     try {
-      final response = await _supabaseClient
-          .rpc('get_products_with_stock')
-          .range(offset, offset + limit - 1);
+      final response = await _apiService.get(
+        '/api/products',
+        queryParams: {'limit': limit.toString(), 'offset': offset.toString()},
+      );
 
-      if (response.isNotEmpty) {
-        final List<ProductWithStock> productList = (response as List)
-            .map((item) => ProductWithStock.fromMap(item))
-            .toList();
-        return productList;
+      if (response['success'] != true) {
+        debugPrint('Error getting products: ${response['error']}');
+        return [];
       }
-      return [];
+
+      final data = response['data'] as List;
+      return data.map((item) => ProductWithStock.fromMap(item)).toList();
     } catch (e) {
       debugPrint('Error getting products with stock: $e');
-      return [];
-    }
-  }
-
-  Future<List<Category>> getCategories() async {
-    try {
-      final response = await _supabaseClient.from('category').select();
-      return response.map((item) => Category.fromMap(item)).toList();
-    } catch (e) {
-      debugPrint('Error getting categories: $e');
-      return [];
-    }
-  }
-
-  Future<List<VehicleType>> getVehicleTypes() async {
-    try {
-      final response = await _supabaseClient.from('vehicle_type').select();
-      return response.map((item) => VehicleType.fromMap(item)).toList();
-    } catch (e) {
-      debugPrint('Error getting vehicle types: $e');
       return [];
     }
   }
@@ -84,36 +44,23 @@ class DatabaseService {
     required int stock,
   }) async {
     try {
-      await _supabaseClient.rpc(
-        'create_product_with_initial_stock',
-        params: {
-          'p_name': name,
-          'p_price': price,
-          'p_category_id': categoryId,
-          'p_vehicle_type_id': vehicleTypeId,
-          'p_image_url': imageUrl,
-          'p_stock': stock,
+      final response = await _apiService.post(
+        '/api/products',
+        body: {
+          'name': name,
+          'price': price,
+          'category_id': categoryId,
+          'vehicle_type_id': vehicleTypeId,
+          'image_url': imageUrl,
+          'stock': stock,
         },
       );
-    } catch (e) {
-      debugPrint('Error creating product with stock: $e');
-      rethrow;
-    }
-  }
 
-  Future<void> deleteProduct(int productId) async {
-    try {
-      await _supabaseClient.rpc(
-        'delete_product',
-        params: {'p_product_id': productId},
-      );
-
-      await logActivity(
-        action: 'DELETE_PRODUCT',
-        description: 'Deleted product ID: $productId',
-      );
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to create product');
+      }
     } catch (e) {
-      debugPrint('Error deleting product: $e');
+      debugPrint('Error creating product: $e');
       rethrow;
     }
   }
@@ -127,66 +74,96 @@ class DatabaseService {
     String? imageUrl,
   }) async {
     try {
-      await _supabaseClient.rpc(
-        'update_product',
-        params: {
-          'p_product_id': productId,
-          'p_name': name,
-          'p_price': price,
-          'p_category_id': categoryId,
-          'p_vehicle_type_id': vehicleTypeId,
-          'p_image_url': imageUrl,
+      final response = await _apiService.put(
+        '/api/products/$productId',
+        body: {
+          'name': name,
+          'price': price,
+          'category_id': categoryId,
+          'vehicle_type_id': vehicleTypeId,
+          'image_url': imageUrl,
         },
       );
+
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to update product');
+      }
     } catch (e) {
       debugPrint('Error updating product: $e');
       rethrow;
     }
   }
 
+  Future<void> deleteProduct(int productId) async {
+    try {
+      final response = await _apiService.delete('/api/products/$productId');
+
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to delete product');
+      }
+    } catch (e) {
+      debugPrint('Error deleting product: $e');
+      rethrow;
+    }
+  }
+
   Future<void> addStock(int productId, int quantity) async {
     try {
-      // Insert into stock_movements
-      await _supabaseClient.from('stock_movements').insert({
-        'product_id': productId,
-        'quantity_change': quantity,
-        'type': 'manual_add',
-      });
-
-      // Update updated_at timestamp to move product to top of list
-      await _supabaseClient
-          .from('products')
-          .update({'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', productId);
-
-      await logActivity(
-        action: 'ADD_STOCK',
-        description: 'Added $quantity stock to product ID: $productId',
+      final response = await _apiService.post(
+        '/api/products/stock',
+        body: {
+          'product_id': productId,
+          'quantity': quantity,
+          'type': 'manual_add',
+        },
       );
+
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to add stock');
+      }
     } catch (e) {
       debugPrint('Error adding stock: $e');
       rethrow;
     }
   }
 
-  Future<String?> uploadReceipt(String path, Uint8List fileBytes) async {
+  // ==================== CATEGORIES & VEHICLE TYPES ====================
+
+  Future<List<Category>> getCategories() async {
     try {
-      await _supabaseClient.storage
-          .from('receipts')
-          .uploadBinary(
-            path,
-            fileBytes,
-            fileOptions: const FileOptions(
-              contentType: 'application/pdf',
-              upsert: true,
-            ),
-          );
-      return _supabaseClient.storage.from('receipts').getPublicUrl(path);
+      final response = await _apiService.get('/api/categories');
+
+      if (response['success'] != true) {
+        debugPrint('Error getting categories: ${response['error']}');
+        return [];
+      }
+
+      final data = response['data'] as List;
+      return data.map((item) => Category.fromMap(item)).toList();
     } catch (e) {
-      debugPrint('Error uploading receipt: $e');
-      return null;
+      debugPrint('Error getting categories: $e');
+      return [];
     }
   }
+
+  Future<List<VehicleType>> getVehicleTypes() async {
+    try {
+      final response = await _apiService.get('/api/vehicle-types');
+
+      if (response['success'] != true) {
+        debugPrint('Error getting vehicle types: ${response['error']}');
+        return [];
+      }
+
+      final data = response['data'] as List;
+      return data.map((item) => VehicleType.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint('Error getting vehicle types: $e');
+      return [];
+    }
+  }
+
+  // ==================== SALES ====================
 
   Future<void> createSale({
     String? customerName,
@@ -197,63 +174,20 @@ class DatabaseService {
     String? paymentMethod,
   }) async {
     try {
-      final authService = AuthService();
-      final userMap = await authService.getCurrentUser();
-      final username = userMap?['username'];
+      final response = await _apiService.post(
+        '/api/sales',
+        body: {
+          'customer_name': customerName,
+          'type': type,
+          'service_fee': serviceFee,
+          'items': items,
+          'receipt_url': receiptUrl,
+          'payment_method': paymentMethod,
+        },
+      );
 
-      if (username == null) {
-        throw Exception('User authentication required to create sale');
-      }
-
-      // Calculate total price
-      int totalItemsPrice = 0;
-      for (var item in items) {
-        final quantity = (item['quantity'] as num).toInt();
-        final price = (item['price'] as num).toInt();
-        totalItemsPrice += quantity * price;
-      }
-
-      final totalPrice = serviceFee.toInt() + totalItemsPrice;
-
-      // 2. Insert into sales table
-      final saleResponse = await _supabaseClient
-          .from('sales')
-          .insert({
-            'customer_name': customerName,
-            'type': type,
-            'service_fee': serviceFee
-                .toInt(), // Convert to int for bigint column
-            'total_amount':
-                totalPrice, // Use total_amount as per database schema
-            'receipt_url': receiptUrl,
-            'user': username,
-            'payment_method': paymentMethod, // Add payment method
-          })
-          .select()
-          .single();
-
-      final saleId = saleResponse['id'];
-
-      // 3. Insert into sale_items table and update stock
-      for (var item in items) {
-        final quantity = (item['quantity'] as num).toInt();
-        final price = (item['price'] as num).toInt();
-        final subtotal = quantity * price;
-
-        await _supabaseClient.from('sales_details').insert({
-          'sale_id': saleId,
-          'product_id': item['product_id'],
-          'quantity': quantity,
-          'price_at_sale': price, // Correct column name
-          'subtotal': subtotal, // Required column
-        });
-
-        // 4. Update stock via stock_movements
-        await _supabaseClient.from('stock_movements').insert({
-          'product_id': item['product_id'],
-          'quantity_change': -quantity, // Negative for sales
-          'type': 'sale',
-        });
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to create sale');
       }
     } catch (e) {
       debugPrint('Error creating sale: $e');
@@ -261,126 +195,151 @@ class DatabaseService {
     }
   }
 
-  // Get sales history for a specific month
   Future<List<Sale>> getSalesHistory({
     required int year,
     required int month,
   }) async {
     try {
-      final startDate = DateTime(year, month, 1);
-      final endDate = DateTime(year, month + 1, 1);
+      final response = await _apiService.get(
+        '/api/sales',
+        queryParams: {'year': year.toString(), 'month': month.toString()},
+      );
 
-      final response = await _supabaseClient
-          .from('sales')
-          .select()
-          .gte('created_at', startDate.toIso8601String())
-          .lt('created_at', endDate.toIso8601String())
-          .order('created_at', ascending: false);
+      if (response['success'] != true) {
+        debugPrint('Error getting sales history: ${response['error']}');
+        return [];
+      }
 
-      return (response as List).map((item) => Sale.fromMap(item)).toList();
+      final data = response['data'] as List;
+      return data.map((item) => Sale.fromMap(item)).toList();
     } catch (e) {
       debugPrint('Error getting sales history: $e');
       return [];
     }
   }
 
-  // Get sale items with product names for a specific sale
-  Future<List<SaleItem>> getSaleItems(int saleId) async {
-    try {
-      final response = await _supabaseClient
-          .from('sales_details')
-          .select('*, products(name)')
-          .eq('sale_id', saleId);
-
-      return (response as List).map((item) {
-        return SaleItem.fromMap({
-          ...item,
-          'product_name': item['products']['name'],
-          // 'price' key might still be expected if not fully refactored,
-          // but we updated SaleItem to look for 'price_at_sale'.
-          // To be safe, let's ensure passed map has what SaleItem needs.
-        });
-      }).toList();
-    } catch (e) {
-      debugPrint('Error getting sale items: $e');
-      return [];
-    }
-  }
-
-  // Get low stock products with direct query
-  Future<List<ProductWithStock>> getLowStockProducts({
-    int limit = 5,
-    int threshold = 3,
-  }) async {
-    try {
-      final response = await _supabaseClient
-          .rpc('get_products_with_stock')
-          .lte('stock', threshold)
-          .order('stock', ascending: true)
-          .limit(limit);
-
-      return (response as List)
-          .map((item) => ProductWithStock.fromMap(item))
-          .toList();
-    } catch (e) {
-      debugPrint('Error getting low stock products: $e');
-      return [];
-    }
-  }
-
-  // Get weekly sales data (last 7 days) - Revenue
-  Future<List<Map<String, dynamic>>> getWeeklySales() async {
-    try {
-      final response = await _supabaseClient.rpc('get_weekly_revenue_chart');
-
-      return (response as List).map((item) {
-        return {
-          'date': item['date_label'],
-          'count':
-              item['daily_revenue'], // Using 'count' key for compatibility with chart widget logic
-        };
-      }).toList();
-    } catch (e) {
-      debugPrint('Error getting weekly sales: $e');
-      return [];
-    }
-  }
-
-  // Get today's sales transactions
   Future<List<Sale>> getTodaySales() async {
     try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final response = await _apiService.get('/api/sales/today');
 
-      final response = await _supabaseClient
-          .from('sales')
-          .select()
-          .gte('created_at', startOfDay.toIso8601String())
-          .lte('created_at', endOfDay.toIso8601String())
-          .order('created_at', ascending: false);
+      if (response['success'] != true) {
+        debugPrint('Error getting today\'s sales: ${response['error']}');
+        return [];
+      }
 
-      return (response as List).map((item) => Sale.fromMap(item)).toList();
+      final data = response['data'] as List;
+      return data.map((item) => Sale.fromMap(item)).toList();
     } catch (e) {
       debugPrint('Error getting today\'s sales: $e');
       return [];
     }
   }
 
-  // Get monthly total revenue
+  Future<List<SaleItem>> getSaleItems(int saleId) async {
+    try {
+      final response = await _apiService.get('/api/sales/$saleId/items');
+
+      if (response['success'] != true) {
+        debugPrint('Error getting sale items: ${response['error']}');
+        return [];
+      }
+
+      final data = response['data'] as List;
+      return data.map((item) => SaleItem.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint('Error getting sale items: $e');
+      return [];
+    }
+  }
+
+  // ==================== DASHBOARD ====================
+
+  Future<List<Map<String, dynamic>>> getWeeklySales() async {
+    try {
+      final response = await _apiService.get('/api/dashboard/weekly');
+
+      if (response['success'] != true) {
+        debugPrint('Error getting weekly sales: ${response['error']}');
+        return [];
+      }
+
+      final data = response['data'] as List;
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } catch (e) {
+      debugPrint('Error getting weekly sales: $e');
+      return [];
+    }
+  }
+
   Future<double> getMonthlyRevenue({
     required int year,
     required int month,
   }) async {
     try {
-      final response = await _supabaseClient.rpc(
-        'get_monthly_revenue_fixed',
-        params: {'m_year': year, 'm_month': month},
+      final response = await _apiService.get(
+        '/api/dashboard/monthly',
+        queryParams: {'year': year.toString(), 'month': month.toString()},
       );
-      return (response as num).toDouble();
+
+      if (response['success'] != true) {
+        debugPrint('Error getting monthly revenue: ${response['error']}');
+        return 0;
+      }
+
+      final data = response['data'] as Map<String, dynamic>;
+      return (data['revenue'] as num).toDouble();
     } catch (e) {
       debugPrint('Error getting monthly revenue: $e');
       return 0;
+    }
+  }
+
+  Future<List<ProductWithStock>> getLowStockProducts({
+    int limit = 5,
+    int threshold = 3,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        '/api/dashboard/low-stock',
+        queryParams: {
+          'limit': limit.toString(),
+          'threshold': threshold.toString(),
+        },
+      );
+
+      if (response['success'] != true) {
+        debugPrint('Error getting low stock products: ${response['error']}');
+        return [];
+      }
+
+      final data = response['data'] as List;
+      return data.map((item) => ProductWithStock.fromMap(item)).toList();
+    } catch (e) {
+      debugPrint('Error getting low stock products: $e');
+      return [];
+    }
+  }
+
+  // ==================== UPLOAD (via REST API) ====================
+
+  Future<String?> uploadReceipt(String path, Uint8List fileBytes) async {
+    try {
+      final response = await _apiService.uploadFile(
+        '/api/upload/receipt',
+        fileBytes,
+        path,
+      );
+
+      if (response['success'] != true) {
+        debugPrint('Error uploading receipt: ${response['error']}');
+        return null;
+      }
+
+      final data = response['data'] as Map<String, dynamic>;
+      return data['url'] as String?;
+    } catch (e) {
+      debugPrint('Error uploading receipt: $e');
+      return null;
     }
   }
 }

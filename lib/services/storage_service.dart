@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:raffli_motor/services/api_service.dart';
+import 'package:raffli_motor/services/config_service.dart';
 
+/// StorageService menggunakan REST API backend sepenuhnya
 class StorageService {
-  final SupabaseClient _supabaseClient = Supabase.instance.client;
-  final String _bucketName = 'productimage_bucket';
+  final ApiService _apiService = ApiService();
+  final ConfigService _configService = ConfigService();
+  final String _defaultBucket = 'productimage_bucket';
 
-  /// Mengunggah gambar ke Supabase Storage dan mengembalikan nama file.
+  /// Mengunggah gambar ke backend REST API
   Future<String?> uploadImage(XFile image) async {
     try {
       final fileBytes = await image.readAsBytes();
@@ -17,45 +20,70 @@ class StorageService {
       );
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.webp';
 
-      await _supabaseClient.storage.from(_bucketName).uploadBinary(
-            fileName,
-            webpBytes,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              contentType: 'image/webp',
-            ),
-          );
+      final response = await _apiService.uploadFile(
+        '/api/upload/product-image',
+        webpBytes,
+        fileName,
+      );
 
-      // Mengembalikan nama file yang diunggah
-      return fileName;
+      if (response['success'] != true) {
+        debugPrint('Error uploading image: ${response['error']}');
+        return null;
+      }
+
+      final data = response['data'] as Map<String, dynamic>;
+      // Return file_name saja (bukan full URL) untuk konsistensi dengan versi lama
+      return data['file_name'] as String?;
     } catch (e) {
       debugPrint('Error uploading image: $e');
       return null;
     }
   }
 
-  /// Menghapus gambar dari Supabase Storage.
-  Future<void> deleteImage(String fileName) async {
+  /// Menghapus gambar melalui REST API
+  Future<void> deleteImage(String fileName, {String? bucket}) async {
     try {
-      final result = await _supabaseClient.storage.from(_bucketName).remove([fileName]);
-      debugPrint('Image deletion result: $result');
+      final bucketParam = bucket ?? _defaultBucket;
+      final response = await _apiService.delete(
+        '/api/storage/$fileName?bucket=$bucketParam',
+      );
+
+      if (response['success'] != true) {
+        debugPrint('Error deleting image: ${response['error']}');
+      } else {
+        debugPrint('Image deleted successfully: $fileName');
+      }
     } catch (e) {
       debugPrint('Error deleting image: $e');
     }
   }
 
-  /// Mendapatkan URL publik untuk file gambar dari path-nya.
-  String getPublicUrl(String filePath) {
+  /// Mendapatkan URL publik untuk file gambar melalui REST API
+  Future<String> getPublicUrl(String filePath, {String? bucket}) async {
     try {
-      return _supabaseClient.storage
-          .from(_bucketName)
-          .getPublicUrl(filePath);
-    }
-    catch (e) {
+      final bucketParam = bucket ?? _defaultBucket;
+      final response = await _apiService.get(
+        '/api/storage/url',
+        queryParams: {'fileName': filePath, 'bucket': bucketParam},
+      );
+
+      if (response['success'] != true) {
+        debugPrint('Error getting public URL: ${response['error']}');
+        return 'https://via.placeholder.com/150';
+      }
+
+      final data = response['data'] as Map<String, dynamic>;
+      return data['url'] as String;
+    } catch (e) {
       debugPrint('Error getting public URL: $e');
-      // Kembalikan URL placeholder jika terjadi kesalahan
       return 'https://via.placeholder.com/150';
     }
   }
-}
 
+  /// Synchronous version untuk backward compatibility
+  /// Menggunakan ConfigService untuk generate URL
+  String getPublicUrlSync(String filePath, {String? bucket}) {
+    final bucketName = bucket ?? _defaultBucket;
+    return _configService.getStorageUrl(bucketName, filePath);
+  }
+}
