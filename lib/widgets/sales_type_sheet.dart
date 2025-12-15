@@ -3,7 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../screens/add_sales_page.dart';
 
 class SalesTypeSheet extends StatelessWidget {
-  const SalesTypeSheet({super.key});
+  final VoidCallback? onSaleCompleted;
+
+  const SalesTypeSheet({super.key, this.onSaleCompleted});
 
   @override
   Widget build(BuildContext context) {
@@ -66,12 +68,17 @@ class SalesTypeSheet extends StatelessWidget {
     required SalesType type,
   }) {
     return InkWell(
-      onTap: () {
+      onTap: () async {
         Navigator.pop(context);
-        Navigator.push(
+        final result = await Navigator.push<bool>(
           context,
           MaterialPageRoute(builder: (context) => AddSalesPage(type: type)),
         );
+
+        // Jika transaksi berhasil, trigger refresh
+        if (result == true && onSaleCompleted != null) {
+          onSaleCompleted!();
+        }
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

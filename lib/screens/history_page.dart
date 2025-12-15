@@ -22,7 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
   bool _isLoading = true;
 
   bool _isCalendarVisible = false;
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  final CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
@@ -52,20 +52,6 @@ class _HistoryPageState extends State<HistoryPage> {
       _sales = sales;
       _isLoading = false;
     });
-  }
-
-  void _previousMonth() {
-    setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
-    });
-    _loadSalesHistory();
-  }
-
-  void _nextMonth() {
-    setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
-    });
-    _loadSalesHistory();
   }
 
   void _toggleCalendar() {
