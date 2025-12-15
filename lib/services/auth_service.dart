@@ -1,100 +1,50 @@
-import 'package:crypto/crypto.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
-import 'dart:math';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:raffli_motor/services/api_service.dart';
 
-/// AuthService dengan session token untuk keamanan lebih tinggi
-/// Session token disimpan di client dan server untuk validasi
+/// AuthService menggunakan REST API backend
 class AuthService {
   static const String _usernameKey = 'auth_username';
   static const String _sessionTokenKey = 'auth_session_token';
   static const String _loginTimeKey = 'auth_login_time';
-  static const int _sessionDurationDays = 7;
 
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final ApiService _apiService = ApiService();
 
-  // Generate secure random session token
-  static String _generateSessionToken() {
-    final random = Random.secure();
-    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
-    return base64Url.encode(bytes);
-  }
-
-  // Hash password dengan SHA-256
-  static String _hashPassword(String password) {
-    var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  // Get device info untuk tracking
-  Future<String> _getDeviceInfo() async {
-    if (kIsWeb) {
-      return 'Web Browser';
-    } else if (Platform.isAndroid) {
-      return 'Android Device';
-    } else if (Platform.isIOS) {
-      return 'iOS Device';
-    } else if (Platform.isMacOS) {
-      return 'macOS Device';
-    } else if (Platform.isWindows) {
-      return 'Windows Device';
-    } else {
-      return 'Unknown Device';
-    }
-  }
-
-  /// Login user dengan validasi dan generate session token
+  /// Login user via REST API
   Future<Map<String, dynamic>?> login({
     required String username,
     required String password,
   }) async {
     try {
-      // Hash password
-      final hashedPassword = _hashPassword(password);
+      final response = await _apiService.post(
+        '/api/auth/login',
+        body: {'username': username, 'password': password},
+        withAuth: false, // Login tidak perlu auth header
+      );
 
-      // Validasi credentials dengan database
-      final userResponse = await _supabase
-          .from('user')
-          .select('username, fullname, role_id')
-          .eq('username', username)
-          .eq('password', hashedPassword)
-          .maybeSingle();
-
-      if (userResponse == null) {
-        return null; // Invalid credentials
+      if (response['success'] != true) {
+        debugPrint('❌ Login failed: ${response['error']}');
+        return null;
       }
 
-      // Generate session token
-      final sessionToken = _generateSessionToken();
+      final data = response['data'] as Map<String, dynamic>;
+      final sessionToken = data['session_token'] as String;
       final loginTime = DateTime.now();
-      final deviceInfo = await _getDeviceInfo();
 
-      // Simpan session ke database untuk validasi server-side
-      await _supabase.from('user_sessions').insert({
-        'username': username,
-        'session_token': sessionToken,
-        'login_time': loginTime.toIso8601String(),
-        'expires_at': loginTime
-            .add(Duration(days: _sessionDurationDays))
-            .toIso8601String(),
-        'device_info': deviceInfo,
-      });
-
-      // Simpan session token ke local storage
+      // Simpan session token ke SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_usernameKey, username);
+      await prefs.setString(_usernameKey, data['username']);
       await prefs.setString(_sessionTokenKey, sessionToken);
       await prefs.setInt(_loginTimeKey, loginTime.millisecondsSinceEpoch);
 
-      debugPrint('✅ Login successful for: $username');
+      // Simpan juga di ApiService untuk requests berikutnya
+      await _apiService.saveSessionToken(sessionToken);
+
+      debugPrint('✅ Login successful for: ${data['username']}');
       return {
-        'username': userResponse['username'],
-        'fullname': userResponse['fullname'],
-        'role_id': userResponse['role_id'],
+        'username': data['username'],
+        'fullname': data['fullname'],
+        'role_id': data['role_id'],
       };
     } catch (e) {
       debugPrint('❌ Login error: $e');
@@ -102,62 +52,29 @@ class AuthService {
     }
   }
 
-  /// Validasi session dengan server (middleware-like validation)
+  /// Validasi session dengan REST API
   Future<bool> validateSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final username = prefs.getString(_usernameKey);
       final sessionToken = prefs.getString(_sessionTokenKey);
-      final loginTime = prefs.getInt(_loginTimeKey);
 
-      if (username == null || sessionToken == null || loginTime == null) {
+      if (sessionToken == null) {
         debugPrint('⚠️ No session found');
         return false;
       }
 
-      // Cek expiry di client-side terlebih dahulu
-      final now = DateTime.now();
-      final loginDateTime = DateTime.fromMillisecondsSinceEpoch(loginTime);
-      final difference = now.difference(loginDateTime).inDays;
+      // Pastikan ApiService punya token
+      await _apiService.saveSessionToken(sessionToken);
 
-      if (difference > _sessionDurationDays) {
-        debugPrint('⚠️ Session expired (client-side check)');
+      final response = await _apiService.get('/api/auth/validate');
+
+      if (response['success'] != true) {
+        debugPrint('⚠️ Session invalid: ${response['error']}');
         await clearSession();
         return false;
       }
 
-      // Validasi session token dengan database (server-side validation)
-      final sessionResponse = await _supabase
-          .from('user_sessions')
-          .select('expires_at, is_active')
-          .eq('username', username)
-          .eq('session_token', sessionToken)
-          .eq('is_active', true)
-          .maybeSingle();
-
-      if (sessionResponse == null) {
-        debugPrint('⚠️ Invalid session token');
-        await clearSession();
-        return false;
-      }
-
-      // Cek apakah session sudah expired di server
-      final expiresAt = DateTime.parse(sessionResponse['expires_at']);
-      if (now.isAfter(expiresAt)) {
-        debugPrint('⚠️ Session expired (server-side check)');
-        await invalidateSession(username, sessionToken);
-        await clearSession();
-        return false;
-      }
-
-      // Update last activity
-      await _supabase
-          .from('user_sessions')
-          .update({'last_activity': now.toIso8601String()})
-          .eq('username', username)
-          .eq('session_token', sessionToken);
-
-      debugPrint('✅ Session valid for: $username');
+      debugPrint('✅ Session valid');
       return true;
     } catch (e) {
       debugPrint('❌ Session validation error: $e');
@@ -177,17 +94,11 @@ class AuthService {
     return {'username': username};
   }
 
-  /// Logout dan invalidate session di server
+  /// Logout via REST API
   Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final username = prefs.getString(_usernameKey);
-      final sessionToken = prefs.getString(_sessionTokenKey);
-
-      if (username != null && sessionToken != null) {
-        // Invalidate session di server
-        await invalidateSession(username, sessionToken);
-      }
+      // Call logout API
+      await _apiService.post('/api/auth/logout');
 
       // Clear local session
       await clearSession();
@@ -198,46 +109,18 @@ class AuthService {
     }
   }
 
-  /// Invalidate session di database
-  Future<void> invalidateSession(String username, String sessionToken) async {
-    try {
-      await _supabase
-          .from('user_sessions')
-          .update({
-            'is_active': false,
-            'invalidated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('username', username)
-          .eq('session_token', sessionToken);
-    } catch (e) {
-      debugPrint('❌ Error invalidating session: $e');
-    }
-  }
-
   /// Clear local session data
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_usernameKey);
     await prefs.remove(_sessionTokenKey);
     await prefs.remove(_loginTimeKey);
+    await _apiService.clearSessionToken();
   }
 
-  /// Invalidate all sessions for a user (logout from all devices)
-  Future<void> logoutAllDevices(String username) async {
-    try {
-      await _supabase
-          .from('user_sessions')
-          .update({
-            'is_active': false,
-            'invalidated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('username', username)
-          .eq('is_active', true);
-      debugPrint('✅ All sessions invalidated for: $username');
-    } catch (e) {
-      debugPrint('❌ Error invalidating all sessions: $e');
-    }
+  /// Get current username without validation
+  Future<String?> getUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_usernameKey);
   }
-
-  /// Get current user ID
 }

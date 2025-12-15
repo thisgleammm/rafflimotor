@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ErrorHandler {
   // List kata-kata sensitif yang tidak boleh ditampilkan ke user
@@ -48,18 +47,6 @@ class ErrorHandler {
     // Cek jika error adalah TimeoutException
     if (errorString.contains('timeout')) {
       return 'Koneksi timeout. Periksa koneksi internet Anda dan coba lagi.';
-    }
-
-    // Cek jika error adalah Supabase error
-    if (error is PostgrestException) {
-      switch (error.code) {
-        case 'PGRST116':
-          return 'Username atau password salah.';
-        case 'PGRST301':
-          return 'Terjadi kesalahan pada server. Silakan coba lagi.';
-        default:
-          return 'Terjadi kesalahan pada sistem. Silakan coba lagi.';
-      }
     }
 
     // Cek error network umum

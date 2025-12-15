@@ -56,19 +56,11 @@ void main() {
       // Test that we can load environment variables
       dotenv.testLoad(
         fileInput: '''
-SUPABASE_URL=https://test-project.supabase.co
-SUPABASE_ANON_KEY=test_key_for_unit_testing
+API_BASE_URL=http://localhost:3000
 ''',
       );
 
-      expect(
-        dotenv.env['SUPABASE_URL'],
-        equals('https://test-project.supabase.co'),
-      );
-      expect(
-        dotenv.env['SUPABASE_ANON_KEY'],
-        equals('test_key_for_unit_testing'),
-      );
+      expect(dotenv.env['API_BASE_URL'], equals('http://localhost:3000'));
     });
   });
 }
