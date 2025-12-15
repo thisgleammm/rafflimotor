@@ -9,6 +9,9 @@ import {
 
 // POST /api/upload/receipt - Upload receipt PDF
 export async function POST(request: NextRequest) {
+  console.log("POST /api/upload/receipt called");
+  console.log("Headers:", Object.fromEntries(request.headers));
+
   const auth = await authenticateRequest(request);
   if (!auth.authenticated) {
     return unauthorizedResponse(auth.error);
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
-      return errorResponse("Failed to upload receipt", 500);
+      return errorResponse(`Failed to upload receipt: ${uploadError.message}`, 500);
     }
 
     // Get public URL

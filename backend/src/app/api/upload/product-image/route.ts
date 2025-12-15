@@ -9,6 +9,9 @@ import {
 
 // POST /api/upload/product-image - Upload product image
 export async function POST(request: NextRequest) {
+  console.log("POST /api/upload/product-image called");
+  console.log("Headers:", Object.fromEntries(request.headers));
+
   const auth = await authenticateRequest(request);
   if (!auth.authenticated) {
     return unauthorizedResponse(auth.error);
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
-      return errorResponse("Failed to upload image", 500);
+      return errorResponse(`Failed to upload image: ${uploadError.message}`, 500);
     }
 
     // Get public URL
