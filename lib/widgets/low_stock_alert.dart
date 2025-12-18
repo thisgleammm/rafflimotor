@@ -5,13 +5,10 @@ import '../models/product_with_stock.dart';
 class LowStockAlert extends StatelessWidget {
   final List<ProductWithStock> lowStockProducts;
   final VoidCallback onRefresh;
-  final VoidCallback onViewStock;
-
   const LowStockAlert({
     super.key,
     required this.lowStockProducts,
     required this.onRefresh,
-    required this.onViewStock,
   });
 
   @override
@@ -268,28 +265,7 @@ class LowStockAlert extends StatelessWidget {
               },
             ),
           ),
-
-          // Action Button
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onViewStock,
-                icon: const Icon(LucideIcons.package, size: 16),
-                label: const Text('Kelola Stok Produk'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDA1818),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(height: 10),
         ],
       ),
     );

@@ -26,7 +26,11 @@ class _DashboardPageState extends State<DashboardPage> {
   final DatabaseService _databaseService = DatabaseService();
   List<ProductWithStock> _lowStockProducts = [];
   bool _isLoadingStock = true;
+
   static const int _minStockThreshold = 3;
+
+  // Key for accessing HistoryPage state
+  final GlobalKey<HistoryPageState> _historyKey = GlobalKey<HistoryPageState>();
 
   // Futures for async loading
   late Future<List<Map<String, dynamic>>> _weeklySalesFuture;
@@ -94,7 +98,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // Trigger rebuild untuk refresh HistoryPage
     // HistoryPage akan reload data di initState saat rebuild
-    setState(() {});
+    // HistoryPage akan reload data di initState saat rebuild,
+    // tapi kita juga panggil manual via GlobalKey untuk memastikan refresh
+    // tanpa perlu rebuild seluruh halaman jika tidak perlu.
+
+    // Refresh history page using GlobalKey
+    _historyKey.currentState?.refresh();
   }
 
   @override
@@ -156,41 +165,6 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ],
                       ),
-                      // Notification badge with count
-                      Stack(
-                        children: [
-                          const Icon(
-                            LucideIcons.bell,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          if (_lowStockProducts.isNotEmpty && !_isLoadingStock)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Text(
-                                  '${_lowStockProducts.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
                     ],
                   ),
                   const SizedBox(height: 25),
@@ -242,7 +216,6 @@ class _DashboardPageState extends State<DashboardPage> {
               LowStockAlert(
                 lowStockProducts: _lowStockProducts,
                 onRefresh: _checkLowStock,
-                onViewStock: () => _onItemTapped(2),
               ),
             // 🔹 Weekly Sales Chart
             FutureBuilder<List<Map<String, dynamic>>>(
@@ -284,7 +257,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
       // History page
-      const HistoryPage(),
+      HistoryPage(key: _historyKey),
       // Inventory Page
       const StockPage(),
       // Profile Page

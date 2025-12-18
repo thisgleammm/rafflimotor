@@ -1,0 +1,1059 @@
+openapi: 3.0.3
+info:
+  title: Raffli Motor REST API
+  description: |
+    Backend REST API untuk aplikasi Raffli Motor - Sistem Manajemen Bengkel Motor.
+    
+    ## Authentication
+    Semua endpoint (kecuali `/api/auth/login`) memerlukan authentication menggunakan Bearer Token.
+    
+    Format header: `Authorization: Bearer <session_token>`
+  version: 1.0.0
+  contact:
+    name: Raffli Motor
+
+servers:
+  - url: http://localhost:3000
+    description: Development Server
+  - url: https://your-app.vercel.app
+    description: Production Server
+
+tags:
+  - name: Authentication
+    description: Endpoint untuk login, logout, dan validasi session
+  - name: Products
+    description: Manajemen produk dan stock
+  - name: Sales
+    description: Transaksi penjualan
+  - name: Master Data
+    description: Data kategori dan tipe kendaraan
+  - name: Dashboard
+    description: Data dashboard dan statistik
+  - name: File Upload
+    description: Upload gambar produk dan receipt
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== AUTHENTICATION ====================
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login pengguna
+      description: Login dan mendapatkan session token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: admin
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                        example: admin
+                      fullname:
+                        type: string
+                        example: Administrator
+                      role_id:
+                        type: integer
+                        example: 1
+                      session_token:
+                        type: string
+                        example: abc123...
+                      expires_at:
+                        type: string
+                        format: date-time
+                        example: '2024-12-22T12:00:00.000Z'
+                  message:
+                    type: string
+                    example: Login successful
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/auth/validate:
+    get:
+      tags:
+        - Authentication
+      summary: Validasi session token
+      description: Validasi session token yang aktif
+      responses:
+        '200':
+          description: Token valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                        example: true
+                      username:
+                        type: string
+                        example: admin
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout pengguna
+      description: Logout dan invalidate session
+      responses:
+        '200':
+          description: Logout berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    nullable: true
+                  message:
+                    type: string
+                    example: Logout successful
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== PRODUCTS ====================
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Get list produk
+      description: Get list produk dengan stock
+      parameters:
+        - name: limit
+          in: query
+          description: Jumlah data per page
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          description: Offset untuk pagination
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Berhasil mendapatkan list produk
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags:
+        - Products
+      summary: Buat produk baru
+      description: Buat produk baru dengan initial stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - category_id
+                - vehicle_type_id
+              properties:
+                name:
+                  type: string
+                  example: Oli Mesin Honda
+                price:
+                  type: number
+                  example: 75000
+                category_id:
+                  type: integer
+                  example: 1
+                vehicle_type_id:
+                  type: integer
+                  example: 1
+                image_url:
+                  type: string
+                  nullable: true
+                  example: null
+                stock:
+                  type: integer
+                  example: 10
+      responses:
+        '201':
+          description: Produk berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 5
+                  message:
+                    type: string
+                    example: Product created successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get detail produk
+      description: Get detail produk berdasarkan ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID produk
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Berhasil mendapatkan detail produk
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    put:
+      tags:
+        - Products
+      summary: Update produk
+      description: Update data produk
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID produk
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Oli Mesin Honda - Updated
+                price:
+                  type: number
+                  example: 80000
+                category_id:
+                  type: integer
+                  example: 1
+                vehicle_type_id:
+                  type: integer
+                  example: 1
+                image_url:
+                  type: string
+                  nullable: true
+                  example: null
+      responses:
+        '200':
+          description: Produk berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    nullable: true
+                  message:
+                    type: string
+                    example: Product updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    delete:
+      tags:
+        - Products
+      summary: Hapus produk
+      description: Hapus produk berdasarkan ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID produk
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Produk berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    nullable: true
+                  message:
+                    type: string
+                    example: Product deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/products/stock:
+    post:
+      tags:
+        - Products
+      summary: Tambah stock produk
+      description: Tambah stock produk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - quantity
+                - type
+              properties:
+                product_id:
+                  type: integer
+                  example: 1
+                quantity:
+                  type: integer
+                  example: 5
+                type:
+                  type: string
+                  enum: [manual_add, purchase, return]
+                  example: manual_add
+      responses:
+        '200':
+          description: Stock berhasil ditambahkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    nullable: true
+                  message:
+                    type: string
+                    example: Stock added successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== SALES ====================
+  /api/sales:
+    get:
+      tags:
+        - Sales
+      summary: Get history penjualan
+      description: Get history penjualan per bulan
+      parameters:
+        - name: year
+          in: query
+          description: Tahun
+          schema:
+            type: integer
+            example: 2024
+        - name: month
+          in: query
+          description: Bulan (1-12)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 12
+      responses:
+        '200':
+          description: Berhasil mendapatkan history penjualan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags:
+        - Sales
+      summary: Buat transaksi penjualan
+      description: Buat transaksi penjualan baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customer_name
+                - type
+                - payment_method
+              properties:
+                customer_name:
+                  type: string
+                  example: Budi Santoso
+                type:
+                  type: string
+                  enum: [sparepart, service, both]
+                  example: sparepart
+                service_fee:
+                  type: number
+                  default: 0
+                  example: 0
+                payment_method:
+                  type: string
+                  enum: [cash, transfer, qris]
+                  example: cash
+                receipt_url:
+                  type: string
+                  nullable: true
+                  example: null
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - product_id
+                      - quantity
+                      - price
+                    properties:
+                      product_id:
+                        type: integer
+                        example: 1
+                      quantity:
+                        type: integer
+                        example: 2
+                      price:
+                        type: number
+                        example: 75000
+      responses:
+        '201':
+          description: Transaksi berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 5
+                      total_amount:
+                        type: number
+                        example: 150000
+                  message:
+                    type: string
+                    example: Sale created successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/sales/today:
+    get:
+      tags:
+        - Sales
+      summary: Get penjualan hari ini
+      description: Get penjualan hari ini
+      responses:
+        '200':
+          description: Berhasil mendapatkan penjualan hari ini
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/sales/{id}/items:
+    get:
+      tags:
+        - Sales
+      summary: Get detail items transaksi
+      description: Get detail items dari sebuah transaksi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID transaksi
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Berhasil mendapatkan detail items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SaleItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ==================== MASTER DATA ====================
+  /api/categories:
+    get:
+      tags:
+        - Master Data
+      summary: Get semua kategori
+      description: Get semua kategori produk
+      responses:
+        '200':
+          description: Berhasil mendapatkan list kategori
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/vehicle-types:
+    get:
+      tags:
+        - Master Data
+      summary: Get semua tipe kendaraan
+      description: Get semua tipe kendaraan
+      responses:
+        '200':
+          description: Berhasil mendapatkan list tipe kendaraan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VehicleType'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== DASHBOARD ====================
+  /api/dashboard/weekly:
+    get:
+      tags:
+        - Dashboard
+      summary: Get data chart weekly
+      description: Get data chart revenue 7 hari terakhir
+      responses:
+        '200':
+          description: Berhasil mendapatkan data weekly
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          example: Sen
+                        count:
+                          type: number
+                          example: 500000
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/dashboard/monthly:
+    get:
+      tags:
+        - Dashboard
+      summary: Get total revenue bulanan
+      description: Get total revenue bulanan
+      parameters:
+        - name: year
+          in: query
+          description: Tahun
+          schema:
+            type: integer
+            example: 2024
+        - name: month
+          in: query
+          description: Bulan (1-12)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 12
+      responses:
+        '200':
+          description: Berhasil mendapatkan revenue bulanan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      revenue:
+                        type: number
+                        example: 15000000
+                      year:
+                        type: integer
+                        example: 2024
+                      month:
+                        type: integer
+                        example: 12
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/dashboard/low-stock:
+    get:
+      tags:
+        - Dashboard
+      summary: Get produk stock rendah
+      description: Get produk dengan stock rendah
+      parameters:
+        - name: limit
+          in: query
+          description: Jumlah produk
+          schema:
+            type: integer
+            default: 5
+        - name: threshold
+          in: query
+          description: Batas stock rendah
+          schema:
+            type: integer
+            default: 3
+      responses:
+        '200':
+          description: Berhasil mendapatkan produk stock rendah
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 3
+                        name:
+                          type: string
+                          example: Kampas Rem
+                        stock:
+                          type: integer
+                          example: 2
+                        price:
+                          type: number
+                          example: 45000
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== FILE UPLOAD ====================
+  /api/upload/product-image:
+    post:
+      tags:
+        - File Upload
+      summary: Upload gambar produk
+      description: Upload gambar produk (jpeg, png, webp)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (jpeg, png, webp)
+      responses:
+        '200':
+          description: Gambar berhasil diupload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      file_name:
+                        type: string
+                        example: 1702650000000.webp
+                      url:
+                        type: string
+                        example: https://xxx.supabase.co/storage/v1/object/public/productimage_bucket/1702650000000.webp
+                  message:
+                    type: string
+                    example: Image uploaded successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/upload/receipt:
+    post:
+      tags:
+        - File Upload
+      summary: Upload receipt PDF
+      description: Upload receipt PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file
+      responses:
+        '200':
+          description: Receipt berhasil diupload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      file_name:
+                        type: string
+                        example: receipt_1702650000000.pdf
+                      url:
+                        type: string
+                        example: https://xxx.supabase.co/storage/v1/object/public/receipts/receipt_1702650000000.pdf
+                  message:
+                    type: string
+                    example: Receipt uploaded successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Session token dari endpoint login
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Oli Mesin Honda
+        price:
+          type: number
+          example: 75000
+        category_name:
+          type: string
+          example: Oli
+        vehicle_type_name:
+          type: string
+          example: Motor
+        image:
+          type: string
+          nullable: true
+          example: https://...
+        created_at:
+          type: string
+          format: date-time
+          example: '2024-12-01T10:00:00.000Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2024-12-15T10:00:00.000Z'
+        stock:
+          type: integer
+          example: 15
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user:
+          type: string
+          example: admin
+        customer_name:
+          type: string
+          example: Budi Santoso
+        type:
+          type: string
+          enum: [sparepart, service, both]
+          example: sparepart
+        service_fee:
+          type: number
+          example: 0
+        total_amount:
+          type: number
+          example: 150000
+        payment_method:
+          type: string
+          enum: [cash, transfer, qris]
+          example: cash
+        receipt_url:
+          type: string
+          nullable: true
+          example: https://...
+        created_at:
+          type: string
+          format: date-time
+          example: '2024-12-15T10:00:00.000Z'
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        sale_id:
+          type: integer
+          example: 1
+        product_id:
+          type: integer
+          example: 1
+        product_name:
+          type: string
+          example: Oli Mesin Honda
+        quantity:
+          type: integer
+          example: 2
+        price_at_sale:
+          type: number
+          example: 75000
+        subtotal:
+          type: number
+          example: 150000
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Oli
+        created_at:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00.000Z'
+
+    VehicleType:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Motor Matic
+        created_at:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00.000Z'
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Error message
+
+  responses:
+    BadRequestError:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: Invalid request body or parameters
+
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: No authorization token provided
+
+    NotFoundError:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: Resource not found
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: Internal server error
