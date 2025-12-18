@@ -12,8 +12,6 @@ class ConfigService {
   static const String _itemsBucketKey = 'config_items_bucket';
 
   // Default values (fallback)
-  static const String _defaultStorageBaseUrl =
-      'https://fojhpsdiojcgpbqflrrx.supabase.co/storage/v1/object/public';
   static const String _defaultProductBucket = 'productimage_bucket';
   static const String _defaultItemsBucket = 'items';
 
@@ -40,8 +38,7 @@ class ConfigService {
       await _fetchConfigFromApi();
     } catch (e) {
       debugPrint('Error initializing config: $e');
-      // Use defaults if initialization fails
-      _storageBaseUrl ??= _defaultStorageBaseUrl;
+      // Use defaults if initialization fails (except for URL which is dynamic)
       _productBucket ??= _defaultProductBucket;
       _itemsBucket ??= _defaultItemsBucket;
     }
@@ -82,7 +79,8 @@ class ConfigService {
   }
 
   /// Get storage base URL
-  String get storageBaseUrl => _storageBaseUrl ?? _defaultStorageBaseUrl;
+  /// Returns empty string if not initialized (caller should handle empty case or ensure init)
+  String get storageBaseUrl => _storageBaseUrl ?? '';
 
   /// Get product image bucket name
   String get productBucket => _productBucket ?? _defaultProductBucket;
@@ -92,16 +90,19 @@ class ConfigService {
 
   /// Generate public URL for product image
   String getProductImageUrl(String fileName) {
+    if (storageBaseUrl.isEmpty) return '';
     return '$storageBaseUrl/$productBucket/$fileName';
   }
 
   /// Generate public URL for item image
   String getItemImageUrl(String fileName) {
+    if (storageBaseUrl.isEmpty) return '';
     return '$storageBaseUrl/$itemsBucket/$fileName';
   }
 
   /// Generic method to generate storage URL
   String getStorageUrl(String bucket, String fileName) {
+    if (storageBaseUrl.isEmpty) return '';
     return '$storageBaseUrl/$bucket/$fileName';
   }
 }

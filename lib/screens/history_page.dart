@@ -11,10 +11,10 @@ class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
-  State<HistoryPage> createState() => _HistoryPageState();
+  State<HistoryPage> createState() => HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
+class HistoryPageState extends State<HistoryPage> {
   final DatabaseService _databaseService = DatabaseService();
   DateTime _selectedMonth = DateTime.now();
   List<Sale> _sales = [];
@@ -22,6 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
   bool _isLoading = true;
 
   bool _isCalendarVisible = false;
+
   final CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
@@ -30,14 +31,25 @@ class _HistoryPageState extends State<HistoryPage> {
     _loadSalesHistory();
   }
 
-  Future<void> _loadSalesHistory() async {
-    setState(() {
-      _isLoading = true;
-    });
+  /// Helper method to be called from parent via GlobalKey
+  void refresh() {
+    if (mounted) {
+      _loadSalesHistory(isSilent: true);
+    }
+  }
 
+  Future<void> _loadSalesHistory({bool isSilent = false}) async {
+    if (!isSilent) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
+    // Force refresh to bypass cache when polling
     final sales = await _databaseService.getSalesHistory(
       year: _selectedMonth.year,
       month: _selectedMonth.month,
+      forceRefresh: isSilent, // Allow cache bypass for auto-update
     );
 
     _saleItemsCache.clear();
@@ -50,7 +62,9 @@ class _HistoryPageState extends State<HistoryPage> {
 
     setState(() {
       _sales = sales;
-      _isLoading = false;
+      if (!isSilent) {
+        _isLoading = false;
+      }
     });
   }
 
